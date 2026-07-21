@@ -446,6 +446,58 @@ function appendMessageToFeed(role, text) {
 // ----------------------------------------------------
 // 5. Browser Native Web Speech Synthesis (TTS)
 // ----------------------------------------------------
+let selectedMandarinVoice = null;
+
+function pickBestMandarinVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return null;
+
+  // 严格过滤：必须为普通话 (绝对排除 zh-HK 粤语、zh-TW 繁体等)
+  const isMandarin = (v) => {
+    const lang = (v.lang || '').toLowerCase();
+    const name = (v.name || '').toLowerCase();
+    // 排除粤语 Cantonese (HK) 和 台湾腔 (TW)
+    if (lang.includes('hk') || lang.includes('tw') || name.includes('cantonese') || name.includes('hong kong') || name.includes('taiwan')) {
+      return false;
+    }
+    return (
+      lang.includes('zh-cn') || 
+      lang.includes('zh_cn') || 
+      lang === 'zh' || 
+      name.includes('chinese (simplified') || 
+      name.includes('mainland') || 
+      name.includes('mandarin') || 
+      name.includes('xiaoxiao') || 
+      name.includes('yunxi') || 
+      name.includes('yunjian')
+    );
+  };
+
+  const mandarinVoices = voices.filter(isMandarin);
+
+  // 1. 优先在普通话中寻找 Natural / Online / Neural 高品质情感声音
+  let best = mandarinVoices.find(v => {
+    const n = v.name.toLowerCase();
+    return n.includes('natural') || n.includes('online') || n.includes('neural');
+  });
+
+  // 2. 备选：普通的普通话语音
+  if (!best && mandarinVoices.length > 0) {
+    best = mandarinVoices[0];
+  }
+
+  // 3. 兜底方案：如果无标记，匹配以 zh-CN / zh 开头且排除 HK/TW 的声音
+  if (!best) {
+    best = voices.find(v => {
+      const l = v.lang.toLowerCase();
+      return (l.startsWith('zh-cn') || l === 'zh') && !l.includes('hk') && !l.includes('tw');
+    });
+  }
+
+  return best;
+}
+
 function initTTS() {
   stopTtsBtn.addEventListener('click', () => {
     window.speechSynthesis.cancel();
@@ -454,8 +506,9 @@ function initTTS() {
 
   if ('speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = () => {
-      window.speechSynthesis.getVoices();
+      selectedMandarinVoice = pickBestMandarinVoice();
     };
+    selectedMandarinVoice = pickBestMandarinVoice();
   }
 }
 
@@ -473,21 +526,13 @@ function speakText(text) {
   utterance.rate = 1.05; // 稍微调优语速，更接近自然对话
   utterance.pitch = 1.0;
 
-  const voices = window.speechSynthesis.getVoices();
-
-  // 1. 优先寻找微软 Natural/Online 高品质中文自然情感语音 (如 Edge 的 Xiaoxiao/Yunxi)
-  let bestVoice = voices.find(v => 
-    (v.lang.includes('zh') || v.lang.includes('CN')) && 
-    (v.name.includes('Natural') || v.name.includes('Online'))
-  );
-
-  // 2. 备选：任意中文普通话语音
-  if (!bestVoice) {
-    bestVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
+  // 一次选定，始终沿用固定的普通话自然声音
+  if (!selectedMandarinVoice) {
+    selectedMandarinVoice = pickBestMandarinVoice();
   }
 
-  if (bestVoice) {
-    utterance.voice = bestVoice;
+  if (selectedMandarinVoice) {
+    utterance.voice = selectedMandarinVoice;
   }
 
   utterance.onstart = () => {
