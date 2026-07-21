@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>财政学 AI 角色扮演辩论课堂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon">🏛️</span>
+        <div>
+          <h1>财政学 AI 语音辩论助教</h1>
+          <p class="subtitle">面向逻辑判断力与理论迁移能力的 AI 角色扮演对辩平台</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="exportBtn" class="btn btn-secondary" disabled>
+          <span class="icon">📥</span> 导出辩论记录 (.md)
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="main-content">
+      <!-- Left Sidebar: Settings & Attachments -->
+      <aside class="sidebar">
+        <!-- Section 1: Role Selection -->
+        <section class="card role-section">
+          <h2>1. 选择辩论角色</h2>
+          <div class="role-grid">
+            <div class="role-card active" data-role="socrates">
+              <div class="role-icon">🏛️</div>
+              <div class="role-info">
+                <h3>苏格拉底</h3>
+                <p>产婆术追问 · 审视观点前提</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="opponent">
+              <div class="role-icon">⚔️</div>
+              <div class="role-info">
+                <h3>反方辩友</h3>
+                <p>持相反立场 · 学术对辩交锋</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="custom">
+              <div class="role-icon">✏️</div>
+              <div class="role-info">
+                <h3>自定义角色</h3>
+                <p>自由设定角色背景与立场</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Role Guidance Card -->
+        <section class="card instruction-section">
+          <h2><span id="instructionTitle">🏛️ 苏格拉底</span> 操作指引</h2>
+          <p id="instructionText" class="instruction-desc">
+            请先用语音表达你的观点（如"我认为……"），苏格拉底将通过追问引导你深入思考。你可以录制多段，录完后点击「提交」。每轮对话后认真回应他的追问。
+          </p>
+        </section>
+
+        <!-- Section 2: Custom Role Prompt Setup (Hidden by default) -->
+        <section id="customRolePanel" class="card custom-role-section hidden">
+          <h2>设定自定义角色</h2>
+          <div class="form-group">
+            <label for="customPromptInput">请输入 AI 角色的身份、视角与立场提示词：</label>
+            <textarea id="customPromptInput" placeholder="例如：你是一位坚定支持自由市场、主张缩减公共开支与政府干预的财政学教授。你语气严肃、逻辑严密，注重效率原则。"></textarea>
+          </div>
+          <button id="saveCustomRoleBtn" class="btn btn-primary btn-sm">确认角色设定</button>
+        </section>
+
+        <!-- Section 3: Optional Attachment Upload -->
+        <section class="card upload-section">
+          <h2>2. 参考背景材料 (可选)</h2>
+          <p class="upload-tip">支持上传 PDF / TXT / MD 文件（≤5MB），AI 将结合材料进行追问或对辩。</p>
+          
+          <div class="file-upload-box">
+            <input type="file" id="fileInput" accept=".pdf,.txt,.md">
+            <label for="fileInput" class="file-dropzone" id="dropzone">
+              <span class="upload-icon">📄</span>
+              <span id="uploadStatusText">点击或拖拽上传 PDF / TXT / MD</span>
+            </label>
+          </div>
+          
+          <div id="fileLoadedBadge" class="file-badge hidden">
+            <span class="badge-icon">✓</span>
+            <span id="fileBadgeName" class="badge-name">已加载：document.pdf</span>
+            <button id="removeFileBtn" class="btn-icon" title="移除文件">&times;</button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Right Main Chat Area -->
+      <section class="chat-container card">
+        <!-- Chat Header / Controls -->
+        <div class="chat-header">
+          <div class="chat-status-indicator">
+            <span class="status-dot green"></span>
+            <span id="chatRoleLabel">与「苏格拉底」对话中</span>
+          </div>
+          <div class="chat-actions">
+            <button id="endDebateBtn" class="btn btn-danger btn-sm hidden">
+              🏁 结束辩论并听取总结
+            </button>
+          </div>
+        </div>
+
+        <!-- Message History Feed -->
+        <div id="chatMessages" class="chat-messages">
+          <div class="system-welcome-msg">
+            <div class="welcome-icon">💡</div>
+            <div>
+              <strong>欢迎来到财政学语音辩论课堂！</strong>
+              <p>请在左侧选择角色，随后在下方使用录音控件陈述你的第一个观点或立场。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio TTS Status Overlay -->
+        <div id="ttsStatusOverlay" class="tts-status hidden">
+          <span class="pulse-wave">🔊</span>
+          <span id="ttsStatusText">AI 正在语音朗读中...</span>
+          <button id="stopTtsBtn" class="btn-text">停止播放</button>
+        </div>
+
+        <!-- Input Area (Multi-segment voice + Submit) -->
+        <div class="input-controls-area">
+          <!-- Multi-segment preview chips -->
+          <div id="audioSegmentsPreview" class="segments-preview hidden">
+            <div class="segments-label">已录制段落 (提交时拼接)：</div>
+            <div id="segmentsList" class="segments-list"></div>
+          </div>
+
+          <!-- Main Input Controls -->
+          <div class="control-bar">
+            <!-- Record Button -->
+            <button id="recordBtn" class="btn btn-record">
+              <span class="rec-dot"></span>
+              <span id="recordBtnText">按住/点击 说话</span>
+            </button>
+
+            <!-- Status Indicator Text -->
+            <div id="recStatus" class="rec-status">
+              <span id="recStatusIcon">🎙️</span>
+              <span id="recStatusText">准备就绪，点击开始说话</span>
+            </div>
+
+            <!-- Submit Button -->
+            <button id="submitDebateBtn" class="btn btn-primary btn-submit" disabled>
+              <span>提交发问</span>
+              <span class="send-icon">🚀</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

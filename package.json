@@ -1,0 +1,12 @@
+{
+  "name": "ai-debate-classroom",
+  "version": "1.0.0",
+  "description": "AI-powered voice debate tool for public finance education",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "pdf-parse": "^1.1.1"
+  }
+}
