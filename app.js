@@ -227,8 +227,9 @@ function initAudioRecorder() {
   });
 
   submitDebateBtn.addEventListener('click', () => {
-    if (recordedSegments.length === 0 || isDebateEnded) return;
-    const combinedText = recordedSegments.join(' ');
+    const validTexts = recordedSegments.map(s => s.trim()).filter(Boolean);
+    if (validTexts.length === 0 || isDebateEnded) return;
+    const combinedText = validTexts.join(' ');
     recordedSegments = [];
     renderSegments();
     sendChatMessage(combinedText);
@@ -329,13 +330,19 @@ function renderSegments() {
     audioSegmentsPreview.classList.remove('hidden');
     segmentsList.innerHTML = recordedSegments.map((text, idx) => `
       <div class="segment-item">
-        <span><strong>#${idx + 1}:</strong> "${escapeHtml(text)}"</span>
-        <span class="del-seg" onclick="deleteSegment(${idx})">&times;</span>
+        <span class="segment-num">#${idx + 1}</span>
+        <input type="text" class="segment-input" value="${escapeHtml(text)}" oninput="updateSegmentText(${idx}, this.value)" placeholder="此处显示识别出的文字，可直接编辑修改错别字...">
+        <button class="del-seg-btn" onclick="deleteSegment(${idx})" title="删除此段">&times;</button>
       </div>
     `).join('');
   }
   updateSubmitButtonState();
 }
+
+window.updateSegmentText = function(index, newText) {
+  recordedSegments[index] = newText;
+  updateSubmitButtonState();
+};
 
 window.deleteSegment = function(index) {
   recordedSegments.splice(index, 1);
@@ -343,7 +350,8 @@ window.deleteSegment = function(index) {
 };
 
 function updateSubmitButtonState() {
-  submitDebateBtn.disabled = recordedSegments.length === 0 || isDebateEnded;
+  const hasValidText = recordedSegments.some(t => t.trim().length > 0);
+  submitDebateBtn.disabled = !hasValidText || isDebateEnded;
 }
 
 // ----------------------------------------------------
