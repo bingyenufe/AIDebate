@@ -55,7 +55,15 @@
               <div class="role-icon">✏️</div>
               <div class="role-info">
                 <h3>自定义角色</h3>
-                <p>自由设定角色背景与立场</p>
+                <p>自由设定角色背景与字数限制</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="proposal_reviewer">
+              <div class="role-icon">📋</div>
+              <div class="role-info">
+                <h3>Proposal 防代写审查</h3>
+                <p>财税计量课程 · 选题/方法/数据/代码审查</p>
               </div>
             </div>
           </div>
@@ -75,6 +83,11 @@
           <div class="form-group">
             <label for="customPromptInput">请输入 AI 角色的身份、视角与立场提示词：</label>
             <textarea id="customPromptInput" placeholder="例如：你是一位坚定支持自由市场、主张缩减公共开支与政府干预的财政学教授。你语气严肃、逻辑严密，注重效率原则。"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="customWordCountInput">要求 AI 回复的字数限制 (最高500字)：</label>
+            <input type="number" id="customWordCountInput" min="10" max="500" value="200" placeholder="如：200">
+            <span class="field-tip">建议输入 50~400 字，后台上限锁定为 500 字。</span>
           </div>
           <button id="saveCustomRoleBtn" class="btn btn-primary btn-sm">确认角色设定</button>
         </section>

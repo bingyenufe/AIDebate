@@ -1,6 +1,6 @@
-// State variables
-let currentRole = 'socrates'; // 'socrates' | 'opponent' | 'custom'
+let currentRole = 'socrates'; // 'socrates' | 'opponent' | 'custom' | 'proposal_reviewer'
 let customRolePrompt = '';
+let customWordCount = 200;
 let uploadedFileContent = '';
 let uploadedFileName = '';
 
@@ -18,6 +18,7 @@ const instructionTitle = document.getElementById('instructionTitle');
 const instructionText = document.getElementById('instructionText');
 const customRolePanel = document.getElementById('customRolePanel');
 const customPromptInput = document.getElementById('customPromptInput');
+const customWordCountInput = document.getElementById('customWordCountInput');
 const saveCustomRoleBtn = document.getElementById('saveCustomRoleBtn');
 
 const fileInput = document.getElementById('fileInput');
@@ -59,7 +60,12 @@ const ROLE_CONFIGS = {
   custom: {
     name: '自定义角色',
     icon: '✏️',
-    instruction: '请先在左侧输入框设定角色的身份或立场，确认设定后，用语音陈述你的第一句话，点击「提交」，AI 将以语音回应。'
+    instruction: '请先在左侧设定角色的身份立场与期望的回复字数限制（最大500字），保存后使用语音进行交流。'
+  },
+  proposal_reviewer: {
+    name: 'Proposal 防代写审查',
+    icon: '📋',
+    instruction: '审查导师将针对《财税计量方法与应用》开题 Proposal，先后从【选题来源与贡献】、【计量模型与识别方法】、【数据与样本】、【核心 Stata 代码】、【内生性与稳健性】这几个角度深入质询（每个角度提约2个问题），检查独立完成度。建议先上传你的 Proposal 文档或用语音陈述开题概述。'
   }
 };
 
@@ -92,14 +98,21 @@ function initRoleSelection() {
 
   saveCustomRoleBtn.addEventListener('click', () => {
     const val = customPromptInput.value.trim();
+    const wc = parseInt(customWordCountInput.value, 10);
     if (!val) {
       alert('请输入自定义角色的提示词描述！');
       return;
     }
+    if (isNaN(wc) || wc < 10 || wc > 500) {
+      alert('请输入正确的字数限制（10 ~ 500 字之间）！');
+      return;
+    }
     customRolePrompt = val;
-    alert('自定义角色设定已保存！现在可以通过语音与该角色对话了。');
+    customWordCount = wc;
+    alert(`自定义角色设定已保存！回复字数上限限制为：${customWordCount}字。`);
   });
 }
+
 
 function updateRoleUI() {
   const config = ROLE_CONFIGS[currentRole];
@@ -370,6 +383,7 @@ async function sendChatMessage(userText, isEnd = false) {
         messages: chatHistory,
         roleType: currentRole,
         customPrompt: customRolePrompt,
+        customWordCount: customWordCount,
         fileContent: uploadedFileContent,
         isEnd: isEnd
       }),
