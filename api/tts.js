@@ -1,7 +1,9 @@
-const MsTTS = require('ms-tts');
+const { EdgeTTS } = require('node-edge-tts');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 export default async function handler(req, res) {
-  // Allow GET and POST methods
   let text = '';
   let voice = 'zh-CN-YunxiNeural';
 
@@ -20,27 +22,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    const tts = new MsTTS();
-    await tts.init();
-
-    // Clean text (remove markdown asterisks or special format characters)
     const cleanText = text.trim()
       .replace(/\*\*/g, '')
       .replace(/#/g, '')
       .replace(/`/g, '')
-      .slice(0, 1000); // capped for safety
+      .slice(0, 1000); 
 
-    const readable = await tts.toStream(cleanText, {
+    const tts = new EdgeTTS({
       voice: voice,
-      rate: '5%',
-      pitch: '0Hz',
+      lang: 'zh-CN',
+      pitch: '+0Hz',
+      rate: '+5%',
+      volume: '+0%'
     });
 
-    const chunks = [];
-    for await (const chunk of readable) {
-      chunks.push(chunk);
+    const tmpPath = path.join(os.tmpdir(), `tts_${Date.now()}_${Math.random().toString(36).substring(7)}.mp3`);
+    
+    await tts.ttsPromise(cleanText, tmpPath);
+
+    const audioBuffer = fs.readFileSync(tmpPath);
+    
+    // Clean up temp file
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch (e) {
+      console.warn('Failed to delete temp file:', e);
     }
-    const audioBuffer = Buffer.concat(chunks);
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'public, max-age=86400');
