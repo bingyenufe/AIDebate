@@ -623,3 +623,97 @@ textarea:focus, input[type="number"]:focus {
 .hidden {
   display: none !important;
 }
+
+/* Responsive Layout for Mobile Devices */
+@media (max-width: 768px) {
+  body {
+    padding: 8px;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .app-container {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .main-content {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .chat-container {
+    height: 520px;
+    min-height: 460px;
+  }
+
+  .control-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .btn-record, .btn-submit {
+    flex: 1;
+    min-width: 130px;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+
+  .rec-status {
+    width: 100%;
+    order: 3;
+    font-size: 0.8rem;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .role-card {
+    padding: 10px;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .role-info h3 {
+    font-size: 0.88rem;
+  }
+
+  .role-info p {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+}
