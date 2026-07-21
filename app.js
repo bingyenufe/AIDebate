@@ -229,6 +229,17 @@ function initAudioRecorder() {
   submitDebateBtn.addEventListener('click', () => {
     const validTexts = recordedSegments.map(s => s.trim()).filter(Boolean);
     if (validTexts.length === 0 || isDebateEnded) return;
+
+    // 预解锁移动端 (iOS/Android) 浏览器的音频播放手势限制
+    if ('speechSynthesis' in window) {
+      try {
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+        const silentUtterance = new SpeechSynthesisUtterance('');
+        silentUtterance.volume = 0.01;
+        window.speechSynthesis.speak(silentUtterance);
+      } catch (e) {}
+    }
+
     const combinedText = validTexts.join(' ');
     recordedSegments = [];
     renderSegments();
@@ -331,7 +342,7 @@ function renderSegments() {
     segmentsList.innerHTML = recordedSegments.map((text, idx) => `
       <div class="segment-item">
         <span class="segment-num">#${idx + 1}</span>
-        <input type="text" class="segment-input" value="${escapeHtml(text)}" oninput="updateSegmentText(${idx}, this.value)" placeholder="此处显示识别出的文字，可直接编辑修改错别字...">
+        <textarea class="segment-input" rows="3" oninput="updateSegmentText(${idx}, this.value)" placeholder="此处显示识别出的文字，可直接编辑修改错别字...">${escapeHtml(text)}</textarea>
         <button class="del-seg-btn" onclick="deleteSegment(${idx})" title="删除此段">&times;</button>
       </div>
     `).join('');
@@ -518,6 +529,10 @@ function speakText(text) {
     return;
   }
 
+  // Resume if paused by mobile browser policy
+  if (window.speechSynthesis.paused) {
+    try { window.speechSynthesis.resume(); } catch (e) {}
+  }
   // Stop any ongoing speech
   window.speechSynthesis.cancel();
 
