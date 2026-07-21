@@ -19,23 +19,40 @@ export default async function handler(req, res) {
     for await (const chunk of req) {
       chunks.push(chunk);
     }
-    const bodyBuffer = Buffer.concat(chunks);
-    const contentType = req.headers['content-type'];
+    const audioBuffer = Buffer.concat(chunks);
 
-    // Forward the raw multipart audio payload directly to SiliconFlow ASR endpoint
+    if (audioBuffer.length === 0) {
+      return res.status(400).json({ error: '音频数据为空' });
+    }
+
+    const contentType = req.headers['content-type'] || 'audio/webm';
+    
+    // Construct standard FormData for SiliconFlow ASR API
+    const audioBlob = new Blob([audioBuffer], { type: contentType });
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'speech.webm');
+    formData.append('model', 'FunAudioLLM/SenseVoiceSmall');
+
     const response = await fetch('https://api.siliconflow.cn/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': contentType,
       },
-      body: bodyBuffer,
+      body: formData,
     });
 
-    const data = await response.json();
+    const resText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(resText);
+    } catch (e) {
+      console.error('SiliconFlow response is not JSON:', resText);
+      return res.status(500).json({ error: '语音识别服务响应非JSON: ' + resText.slice(0, 100) });
+    }
+
     if (!response.ok) {
       console.error('SiliconFlow ASR Error:', data);
-      return res.status(response.status).json({ error: data.message || '语音识别服务异常' });
+      return res.status(response.status).json({ error: data.message || data.error || '语音识别服务异常' });
     }
 
     return res.status(200).json({ text: data.text || '' });
@@ -44,3 +61,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: '语音识别处理失败: ' + error.message });
   }
 }
+

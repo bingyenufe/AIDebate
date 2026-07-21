@@ -264,16 +264,23 @@ function stopRecording() {
 }
 
 async function processAudioChunk(blob) {
-  const formData = new FormData();
-  formData.append('audio', blob, 'recording.webm');
-
   try {
     const response = await fetch('/api/transcribe', {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': blob.type || 'audio/webm',
+      },
+      body: blob,
     });
 
-    const data = await response.json();
+    const resText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(resText);
+    } catch (e) {
+      throw new Error(`服务器服务响应错误 (${response.status}): ${resText.slice(0, 50)}`);
+    }
+
     if (!response.ok) {
       throw new Error(data.error || '语音识别失败');
     }
