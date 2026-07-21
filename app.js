@@ -32,6 +32,9 @@ const removeFileBtn = document.getElementById('removeFileBtn');
 
 const chatRoleLabel = document.getElementById('chatRoleLabel');
 const endDebateBtn = document.getElementById('endDebateBtn');
+const startModalOverlay = document.getElementById('startModalOverlay');
+const startAppBtn = document.getElementById('startAppBtn');
+
 const chatMessages = document.getElementById('chatMessages');
 const exportBtn = document.getElementById('exportBtn');
 
@@ -73,12 +76,43 @@ const ROLE_CONFIGS = {
 
 // Initialize event listeners on page load
 document.addEventListener('DOMContentLoaded', () => {
+  initStartModal();
   initRoleSelection();
   initFileUpload();
   initAudioRecorder();
   initDebateActions();
   initTTS();
 });
+
+function initStartModal() {
+  if (!startAppBtn || !startModalOverlay) return;
+
+  startAppBtn.addEventListener('click', () => {
+    // Unlock Web Speech Synthesis for iOS/Android in direct touch gesture
+    if ('speechSynthesis' in window) {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        selectedMandarinVoice = pickBestMandarinVoice();
+        const welcomeUtterance = new SpeechSynthesisUtterance('欢迎进入财政学语音辩论课堂！');
+        welcomeUtterance.lang = 'zh-CN';
+        if (selectedMandarinVoice) {
+          welcomeUtterance.voice = selectedMandarinVoice;
+        }
+        window.speechSynthesis.speak(welcomeUtterance);
+      } catch (e) {
+        console.warn('TTS unlock error:', e);
+      }
+    }
+
+    // Hide modal overlay with smooth fade-out
+    startModalOverlay.classList.add('fade-out');
+    setTimeout(() => {
+      startModalOverlay.classList.add('hidden');
+    }, 400);
+  });
+}
 
 // ----------------------------------------------------
 // 1. Role Selection & Custom Role Logic
