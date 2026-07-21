@@ -48,6 +48,16 @@ const recStatusIcon = document.getElementById('recStatusIcon');
 const recStatusText = document.getElementById('recStatusText');
 const submitDebateBtn = document.getElementById('submitDebateBtn');
 
+// Password Unlock Modal DOM
+const passwordModalOverlay = document.getElementById('passwordModalOverlay');
+const adminPasswordInput = document.getElementById('adminPasswordInput');
+const passwordErrorTip = document.getElementById('passwordErrorTip');
+const cancelPasswordBtn = document.getElementById('cancelPasswordBtn');
+const submitPasswordBtn = document.getElementById('submitPasswordBtn');
+
+let unlockedPassword = sessionStorage.getItem('unlockedAdminPassword') || '';
+let pendingDebateIsEnd = false;
+
 // Role Configuration Data
 const ROLE_CONFIGS = {
   socrates: {
@@ -79,7 +89,44 @@ document.addEventListener('DOMContentLoaded', () => {
   initAudioRecorder();
   initDebateActions();
   initTTS();
+  initPasswordModal();
 });
+
+function initPasswordModal() {
+  if (!passwordModalOverlay || !submitPasswordBtn || !cancelPasswordBtn) return;
+
+  cancelPasswordBtn.addEventListener('click', () => {
+    passwordModalOverlay.classList.add('hidden');
+    passwordErrorTip.classList.add('hidden');
+    recStatusIcon.textContent = '🔒';
+    recStatusText.textContent = '每日免费调用额度已用完，需要输入解锁密码';
+  });
+
+  submitPasswordBtn.addEventListener('click', () => {
+    const pwd = adminPasswordInput.value.trim();
+    if (!pwd) {
+      passwordErrorTip.textContent = '⚠️ 请输入密码';
+      passwordErrorTip.classList.remove('hidden');
+      return;
+    }
+
+    unlockedPassword = pwd;
+    sessionStorage.setItem('unlockedAdminPassword', pwd);
+    passwordModalOverlay.classList.add('hidden');
+    passwordErrorTip.classList.add('hidden');
+    adminPasswordInput.value = '';
+
+    // Retry sending the debate message
+    sendDebateMessage(pendingDebateIsEnd);
+  });
+
+  // Support pressing Enter key in password input
+  adminPasswordInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      submitPasswordBtn.click();
+    }
+  });
+}
 
 // ----------------------------------------------------
 // 1. Role Selection & Custom Role Logic
@@ -414,11 +461,31 @@ async function sendChatMessage(userText, isEnd = false) {
         customPrompt: customRolePrompt,
         customWordCount: customWordCount,
         fileContent: uploadedFileContent,
-        isEnd: isEnd
+        isEnd: isEnd,
+        providedPassword: unlockedPassword
       }),
     });
 
     const data = await response.json();
+
+    // Check if daily quota is exceeded
+    if (response.status === 429 || data.error === 'QUOTA_EXCEEDED') {
+      pendingDebateIsEnd = isEnd;
+      passwordModalOverlay.classList.remove('hidden');
+      if (unlockedPassword) {
+        // If unlockedPassword was tried but still failed, it means password was wrong
+        passwordErrorTip.textContent = '❌ 密码不正确，请重新输入';
+        passwordErrorTip.classList.remove('hidden');
+      } else {
+        passwordErrorTip.classList.add('hidden');
+      }
+      adminPasswordInput.focus();
+
+      recStatusIcon.textContent = '🔐';
+      recStatusText.textContent = '今日公共额度已满，等待输入教师解锁密码...';
+      return;
+    }
+
     if (!response.ok) {
       throw new Error(data.error || 'AI 回复异常');
     }

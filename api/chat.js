@@ -1,3 +1,42 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+async function checkAndIncrementDailyUsage() {
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+  if (upstashUrl && upstashToken) {
+    try {
+      const key = `daily_usage:${todayStr}`;
+      const res = await fetch(`${upstashUrl}/incr/${key}`, {
+        headers: { Authorization: `Bearer ${upstashToken}` }
+      });
+      const data = await res.json();
+      if (typeof data.result === 'number') return data.result;
+    } catch (e) {
+      console.warn('Upstash Redis error, falling back to file counter:', e);
+    }
+  }
+
+  // Fallback to local /tmp file counter
+  try {
+    const tmpFile = path.join(os.tmpdir(), `daily_usage_${todayStr}.json`);
+    let count = 0;
+    if (fs.existsSync(tmpFile)) {
+      const content = fs.readFileSync(tmpFile, 'utf8');
+      count = JSON.parse(content).count || 0;
+    }
+    count += 1;
+    fs.writeFileSync(tmpFile, JSON.stringify({ count }));
+    return count;
+  } catch (e) {
+    console.warn('Local file counter error:', e);
+    return 1;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -9,7 +48,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { messages, roleType, customPrompt, customWordCount, fileContent, isEnd } = req.body;
+    const { messages, roleType, customPrompt, customWordCount, fileContent, isEnd, providedPassword } = req.body;
+
+    const adminPassword = process.env.ADMIN_PASSWORD || 'finance2026';
+    const dailyLimit = parseInt(process.env.DAILY_LIMIT, 10) || 500;
+
+    // Check if valid admin password is provided to bypass rate limit
+    const isUnlockedByPassword = providedPassword && providedPassword.trim() === adminPassword;
+
+    if (!isUnlockedByPassword) {
+      const currentUsage = await checkAndIncrementDailyUsage();
+      if (currentUsage > dailyLimit) {
+        return res.status(429).json({
+          error: 'QUOTA_EXCEEDED',
+          message: `今日全站公共免费额度（${dailyLimit}次）已达上限。如需继续使用，请输入教师解锁密码。`
+        });
+      }
+    }
 
     let systemPrompt = '';
     let maxTokens = 300;

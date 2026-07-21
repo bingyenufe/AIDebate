@@ -179,6 +179,25 @@
     </main>
   </div>
 
+  <!-- Password Unlock Modal Overlay -->
+  <div id="passwordModalOverlay" class="password-modal-overlay hidden">
+    <div class="password-modal-card">
+      <div class="password-modal-icon">🔐</div>
+      <h2>今日公共免费额度已满</h2>
+      <p class="password-modal-desc">
+        全站今日公共对话额度已全部分配完毕。如需在课堂或课后继续使用，请输入教师/管理员解锁密码。
+      </p>
+      <div class="password-input-group">
+        <input type="password" id="adminPasswordInput" placeholder="请输入教师解锁密码" autocomplete="off">
+        <div id="passwordErrorTip" class="password-error-tip hidden">❌ 密码不正确，请重新输入</div>
+      </div>
+      <div class="password-modal-actions">
+        <button id="cancelPasswordBtn" class="btn btn-secondary">取消</button>
+        <button id="submitPasswordBtn" class="btn btn-primary">🔓 验证密码并继续</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

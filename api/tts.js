@@ -1,7 +1,7 @@
-const { EdgeTTS } = require('node-edge-tts');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import { EdgeTTS } from 'node-edge-tts';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 export default async function handler(req, res) {
   let text = '';
