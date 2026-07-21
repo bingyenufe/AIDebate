@@ -63,9 +63,9 @@ const ROLE_CONFIGS = {
     instruction: '请先在左侧设定角色的身份立场与期望的回复字数限制（最大500字），保存后使用语音进行交流。'
   },
   proposal_reviewer: {
-    name: 'Proposal 防代写审查',
+    name: 'Proposal 审查',
     icon: '📋',
-    instruction: '审查导师将针对《财税计量方法与应用》开题 Proposal，先后从【选题来源与贡献】、【计量模型与识别方法】、【数据与样本】、【核心 Stata 代码】、【内生性与稳健性】这几个角度深入质询（每个角度提约2个问题），检查独立完成度。建议先上传你的 Proposal 文档或用语音陈述开题概述。'
+    instruction: '【⚠️ 必须提供附件】审查导师将结合你上传的《财税计量方法与应用》Proposal 论文文件，先后从【选题来源与贡献】、【计量模型与识别方法】、【数据与样本】、【核心 Stata 代码】、【内生性与稳健性】这几个角度深入质询（每个角度提约2个问题）。请先在左侧上传你的 Proposal 附件（PDF/TXT/MD）。'
   }
 };
 
@@ -363,6 +363,11 @@ function initDebateActions() {
 async function sendChatMessage(userText, isEnd = false) {
   if (currentRole === 'custom' && !customRolePrompt) {
     alert('请先在左侧输入并保存自定义角色的提示词设定！');
+    return;
+  }
+
+  if (currentRole === 'proposal_reviewer' && !uploadedFileContent) {
+    alert('【Proposal 审查】角色要求必须先在左侧上传你的 Proposal 论文文件（PDF/TXT/MD）！上传后方可开始审查。');
     return;
   }
 
