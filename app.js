@@ -451,6 +451,12 @@ function initTTS() {
     window.speechSynthesis.cancel();
     ttsStatusOverlay.classList.add('hidden');
   });
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.getVoices();
+    };
+  }
 }
 
 function speakText(text) {
@@ -464,14 +470,24 @@ function speakText(text) {
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'zh-CN';
-  utterance.rate = 1.0; // Normal speech rate
+  utterance.rate = 1.05; // 稍微调优语速，更接近自然对话
   utterance.pitch = 1.0;
 
-  // Try picking a Chinese voice if available
   const voices = window.speechSynthesis.getVoices();
-  const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
-  if (zhVoice) {
-    utterance.voice = zhVoice;
+
+  // 1. 优先寻找微软 Natural/Online 高品质中文自然情感语音 (如 Edge 的 Xiaoxiao/Yunxi)
+  let bestVoice = voices.find(v => 
+    (v.lang.includes('zh') || v.lang.includes('CN')) && 
+    (v.name.includes('Natural') || v.name.includes('Online'))
+  );
+
+  // 2. 备选：任意中文普通话语音
+  if (!bestVoice) {
+    bestVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
+  }
+
+  if (bestVoice) {
+    utterance.voice = bestVoice;
   }
 
   utterance.onstart = () => {
