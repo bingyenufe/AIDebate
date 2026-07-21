@@ -32,8 +32,6 @@ const removeFileBtn = document.getElementById('removeFileBtn');
 
 const chatRoleLabel = document.getElementById('chatRoleLabel');
 const endDebateBtn = document.getElementById('endDebateBtn');
-const startModalOverlay = document.getElementById('startModalOverlay');
-const startAppBtn = document.getElementById('startAppBtn');
 
 const chatMessages = document.getElementById('chatMessages');
 const exportBtn = document.getElementById('exportBtn');
@@ -76,43 +74,12 @@ const ROLE_CONFIGS = {
 
 // Initialize event listeners on page load
 document.addEventListener('DOMContentLoaded', () => {
-  initStartModal();
   initRoleSelection();
   initFileUpload();
   initAudioRecorder();
   initDebateActions();
   initTTS();
 });
-
-function initStartModal() {
-  if (!startAppBtn || !startModalOverlay) return;
-
-  startAppBtn.addEventListener('click', () => {
-    // Unlock Web Speech Synthesis for iOS/Android in direct touch gesture
-    if ('speechSynthesis' in window) {
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-        selectedMandarinVoice = pickBestMandarinVoice();
-        const welcomeUtterance = new SpeechSynthesisUtterance('欢迎进入财政学语音辩论课堂！');
-        welcomeUtterance.lang = 'zh-CN';
-        if (selectedMandarinVoice) {
-          welcomeUtterance.voice = selectedMandarinVoice;
-        }
-        window.speechSynthesis.speak(welcomeUtterance);
-      } catch (e) {
-        console.warn('TTS unlock error:', e);
-      }
-    }
-
-    // Hide modal overlay with smooth fade-out
-    startModalOverlay.classList.add('fade-out');
-    setTimeout(() => {
-      startModalOverlay.classList.add('hidden');
-    }, 400);
-  });
-}
 
 // ----------------------------------------------------
 // 1. Role Selection & Custom Role Logic
@@ -489,114 +456,63 @@ function appendMessageToFeed(role, text) {
 }
 
 // ----------------------------------------------------
-// 5. Browser Native Web Speech Synthesis (TTS)
+// 5. Cloud Edge-TTS HTML5 Audio Stream (全平台情感朗读)
 // ----------------------------------------------------
-let selectedMandarinVoice = null;
-
-function pickBestMandarinVoice() {
-  if (!('speechSynthesis' in window)) return null;
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices || voices.length === 0) return null;
-
-  // 严格过滤：必须为普通话 (绝对排除 zh-HK 粤语、zh-TW 繁体等)
-  const isMandarin = (v) => {
-    const lang = (v.lang || '').toLowerCase();
-    const name = (v.name || '').toLowerCase();
-    // 排除粤语 Cantonese (HK) 和 台湾腔 (TW)
-    if (lang.includes('hk') || lang.includes('tw') || name.includes('cantonese') || name.includes('hong kong') || name.includes('taiwan')) {
-      return false;
-    }
-    return (
-      lang.includes('zh-cn') || 
-      lang.includes('zh_cn') || 
-      lang === 'zh' || 
-      name.includes('chinese (simplified') || 
-      name.includes('mainland') || 
-      name.includes('mandarin') || 
-      name.includes('xiaoxiao') || 
-      name.includes('yunxi') || 
-      name.includes('yunjian')
-    );
-  };
-
-  const mandarinVoices = voices.filter(isMandarin);
-
-  // 1. 优先在普通话中寻找 Natural / Online / Neural 高品质情感声音
-  let best = mandarinVoices.find(v => {
-    const n = v.name.toLowerCase();
-    return n.includes('natural') || n.includes('online') || n.includes('neural');
-  });
-
-  // 2. 备选：普通的普通话语音
-  if (!best && mandarinVoices.length > 0) {
-    best = mandarinVoices[0];
-  }
-
-  // 3. 兜底方案：如果无标记，匹配以 zh-CN / zh 开头且排除 HK/TW 的声音
-  if (!best) {
-    best = voices.find(v => {
-      const l = v.lang.toLowerCase();
-      return (l.startsWith('zh-cn') || l === 'zh') && !l.includes('hk') && !l.includes('tw');
-    });
-  }
-
-  return best;
-}
+let currentAudioElement = null;
 
 function initTTS() {
   stopTtsBtn.addEventListener('click', () => {
-    window.speechSynthesis.cancel();
+    if (currentAudioElement) {
+      currentAudioElement.pause();
+      currentAudioElement = null;
+    }
     ttsStatusOverlay.classList.add('hidden');
   });
-
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      selectedMandarinVoice = pickBestMandarinVoice();
-    };
-    selectedMandarinVoice = pickBestMandarinVoice();
-  }
 }
 
 function speakText(text) {
-  if (!('speechSynthesis' in window)) {
-    console.warn('当前浏览器不支持 Web Speech Synthesis');
-    return;
+  if (!text || !text.trim()) return;
+
+  // 1. 停止上一次未读完的音频
+  if (currentAudioElement) {
+    try {
+      currentAudioElement.pause();
+    } catch (e) {}
+    currentAudioElement = null;
   }
 
-  // Resume if paused by mobile browser policy
-  if (window.speechSynthesis.paused) {
-    try { window.speechSynthesis.resume(); } catch (e) {}
-  }
-  // Stop any ongoing speech
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'zh-CN';
-  utterance.rate = 1.05; // 稍微调优语速，更接近自然对话
-  utterance.pitch = 1.0;
-
-  // 一次选定，始终沿用固定的普通话自然声音
-  if (!selectedMandarinVoice) {
-    selectedMandarinVoice = pickBestMandarinVoice();
+  // 2. 根据角色选择最适合的微软云端 Neural 神经网络声音
+  // 反方辩友与 Proposal 审查选用沉稳严肃男声 Yunxi，苏格拉底/自定义选用自然启发女声 Xiaoxiao
+  let voice = 'zh-CN-XiaoxiaoNeural';
+  if (currentRole === 'opponent' || currentRole === 'proposal_reviewer') {
+    voice = 'zh-CN-YunxiNeural';
   }
 
-  if (selectedMandarinVoice) {
-    utterance.voice = selectedMandarinVoice;
-  }
+  // 3. 构建 Edge-TTS 云端音频流接口 URL
+  const ttsUrl = `/api/tts?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(voice)}`;
 
-  utterance.onstart = () => {
+  // 4. 创建 HTML5 Audio 在全平台 (手机 & 电脑) 100% 稳定流畅播放
+  currentAudioElement = new Audio(ttsUrl);
+
+  currentAudioElement.onplay = () => {
     ttsStatusOverlay.classList.remove('hidden');
   };
 
-  utterance.onend = () => {
+  currentAudioElement.onended = () => {
     ttsStatusOverlay.classList.add('hidden');
+    currentAudioElement = null;
   };
 
-  utterance.onerror = () => {
+  currentAudioElement.onerror = (err) => {
+    console.error('Edge-TTS Audio Playback Error:', err);
     ttsStatusOverlay.classList.add('hidden');
+    currentAudioElement = null;
   };
 
-  window.speechSynthesis.speak(utterance);
+  // 播放音频
+  currentAudioElement.play().catch(err => {
+    console.warn('Audio Autoplay Blocked or Failed:', err);
+  });
 }
 
 // ----------------------------------------------------
