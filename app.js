@@ -24,6 +24,8 @@ const saveCustomRoleBtn = document.getElementById('saveCustomRoleBtn');
 const fileInput = document.getElementById('fileInput');
 const dropzone = document.getElementById('dropzone');
 const uploadStatusText = document.getElementById('uploadStatusText');
+const uploadSectionTitle = document.getElementById('uploadSectionTitle');
+const uploadSectionTip = document.getElementById('uploadSectionTip');
 const fileLoadedBadge = document.getElementById('fileLoadedBadge');
 const fileBadgeName = document.getElementById('fileBadgeName');
 const removeFileBtn = document.getElementById('removeFileBtn');
@@ -126,10 +128,12 @@ function updateRoleUI() {
     customRolePanel.classList.add('hidden');
   }
 
-  if (currentRole === 'opponent') {
-    endDebateBtn.classList.remove('hidden');
+  if (currentRole === 'proposal_reviewer') {
+    uploadSectionTitle.innerHTML = '2. 参考 Proposal 材料 <span style="color: #ef4444; font-size: 0.9em; font-weight: 700;">(⚠️ 必填)</span>';
+    uploadSectionTip.innerHTML = '<strong style="color: #f59e0b;">【必须上传】</strong>请上传你的 Proposal 论文文档（支持 PDF / TXT / MD，≤5MB），审查导师将结合材料展开质询。';
   } else {
-    endDebateBtn.classList.add('hidden');
+    uploadSectionTitle.textContent = '2. 参考背景材料 (可选)';
+    uploadSectionTip.textContent = '支持上传 PDF / TXT / MD 文件（≤5MB），AI 将结合材料进行追问或对辩。';
   }
 
   // Reset conversation for new role
