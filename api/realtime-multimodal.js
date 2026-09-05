@@ -106,7 +106,13 @@ export default async function handler(req, res) {
       }
     }
 
-    const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    const workspaceId = (process.env.DASHSCOPE_WORKSPACE_ID || req.body.workspaceId || '').trim();
+    const region = (process.env.DASHSCOPE_REGION || req.body.region || 'cn-beijing').trim();
+    const chatUrl = workspaceId
+      ? `https://${workspaceId}.${region}.maas.aliyuncs.com/compatible-mode/v1/chat/completions`
+      : 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+
+    const response = await fetch(chatUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
