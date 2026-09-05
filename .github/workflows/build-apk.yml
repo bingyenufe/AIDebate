@@ -34,7 +34,7 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
-          gradle assembleDebug assembleRelease --stacktrace
+          gradle :app:assembleRelease :app:assembleDebug --stacktrace
 
       - name: Prepare Release APK
         run: |
