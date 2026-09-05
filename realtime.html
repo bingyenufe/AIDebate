@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Realtime AI Debate | 实时语音多模态课堂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="realtime.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1>Realtime AI Debate</h1>
+          <p class="subtitle">阿里云百炼 qwen3.5-omni-flash-realtime 端到端全双工实时多模态交互</p>
+        </div>
+      </div>
+      <div class="header-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <span id="connStatusBadge" class="conn-badge disconnected">
+          <span class="dot"></span>
+          <span id="connStatusText">未连接</span>
+        </span>
+        <a href="index.html" class="btn btn-secondary" style="text-decoration: none;">
+          <span class="icon">🏠</span> 模式选择
+        </a>
+        <a href="debate.html" class="btn btn-secondary" style="text-decoration: none;">
+          <span class="icon">🏛️</span> 经典辩论
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="main-content">
+      <!-- Left Sidebar: Settings & Attachments -->
+      <aside class="sidebar">
+        <!-- Section 1: Role Selection -->
+        <section class="card role-section">
+          <h2>1. 选择互动角色</h2>
+          <div class="role-grid">
+            <div class="role-card" data-role="socrates">
+              <div class="role-icon">🏛️</div>
+              <div class="role-info">
+                <h3>苏格拉底</h3>
+                <p>实时产婆术追问 · 审视逻辑前提 · 纯音频作答</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="opponent">
+              <div class="role-icon">⚔️</div>
+              <div class="role-info">
+                <h3>反方辩友</h3>
+                <p>持相反立场 · 实时交锋对辩 · 纯音频作答</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="collaborator">
+              <div class="role-icon">🤝</div>
+              <div class="role-info">
+                <h3>研讨伙伴</h3>
+                <p>平等学术探讨 · 澄清概念机制 · 纯音频作答</p>
+              </div>
+            </div>
+
+            <!-- Replaced Proposal Reviewer with First Grade Tutor -->
+            <div class="role-card active" data-role="first_grade_tutor">
+              <div class="role-icon">🎒</div>
+              <div class="role-info">
+                <h3>一年级学习助手</h3>
+                <p>6岁小朋友启蒙 · 拼音字词算术 · 慢语速纯音频</p>
+              </div>
+            </div>
+
+            <!-- Added 100,000 Whys Assistant -->
+            <div class="role-card" data-role="hundred_thousand_whys">
+              <div class="role-icon">🌟</div>
+              <div class="role-info">
+                <h3>十万个为什么</h3>
+                <p>低年级趣味科普 · 生动小比喻 · 慢语速纯音频</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="custom">
+              <div class="role-icon">✏️</div>
+              <div class="role-info">
+                <h3>自定义角色</h3>
+                <p>自由设定角色提示词与人设</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Role Guidance Card -->
+        <section class="card instruction-section">
+          <h2><span id="instructionTitle">🎒 一年级学习助手</span> 操作指引</h2>
+          <p id="instructionText" class="instruction-desc">
+            专为 6 岁一年级小朋友设计的温柔助教。点击下方「开启实时连麦」，小朋友可直接用声音提问（拼音读法、生字组词、简单算术），也可以拍照上传题目。助手先直接给出明确答案，再给予一句表扬或记忆小窍门，语速平缓温和，纯语音亲切启发！
+          </p>
+        </section>
+
+        <!-- Section 2: Custom Role Prompt Setup (Hidden by default) -->
+        <section id="customRolePanel" class="card custom-role-section hidden">
+          <h2>设定自定义角色</h2>
+          <div class="form-group">
+            <label for="customPromptInput">请输入 AI 角色的身份、视角与设定提示词：</label>
+            <textarea id="customPromptInput" placeholder="例如：你是一位耐心和蔼的小学科学老师，面对6岁儿童，语速平缓，擅长用日常生活的趣味童话做比喻。"></textarea>
+          </div>
+          <button id="saveCustomRoleBtn" class="btn btn-primary btn-sm">确认角色设定</button>
+        </section>
+
+        <!-- Section 3: Optional Reference Material or Image Upload -->
+        <section class="card upload-section">
+          <h2 id="uploadSectionTitle">2. 参考背景 / 拍照上传题目 (可选)</h2>
+          <p id="uploadSectionTip" class="upload-tip">
+            支持拍照或上传课本插图、练习题图片（JPG/PNG/WEBP）或背景文档（PDF/TXT/MD）。
+          </p>
+          
+          <div class="file-upload-box">
+            <input type="file" id="fileInput" accept="image/*,.pdf,.txt,.md">
+            <label for="fileInput" class="file-dropzone" id="dropzone">
+              <span class="upload-icon">📷</span>
+              <span id="uploadStatusText">点击拍照或上传图片 / 文档</span>
+            </label>
+          </div>
+          
+          <div id="fileLoadedBadge" class="file-badge hidden">
+            <span class="badge-icon">✓</span>
+            <span id="fileBadgeName" class="badge-name">已加载图片</span>
+            <button id="removeFileBtn" class="btn-icon" title="移除">&times;</button>
+          </div>
+
+          <!-- Image Preview Thumbnail if an image is loaded -->
+          <div id="imagePreviewContainer" class="image-preview-box hidden">
+            <img id="imagePreview" alt="已上传题目预览" src="">
+          </div>
+        </section>
+      </aside>
+
+      <!-- Right Main Chat & Audio Stage Area -->
+      <section class="chat-container card realtime-chat-container">
+        <!-- Realtime Call Top Bar -->
+        <div class="chat-header">
+          <div class="chat-status-indicator">
+            <span id="liveDot" class="status-dot gray"></span>
+            <span id="chatRoleLabel">与「一年级学习助手」实时连线</span>
+          </div>
+          <div class="chat-actions" style="display: flex; gap: 8px; align-items: center;">
+            <button id="muteToggleBtn" class="btn btn-secondary btn-sm hidden">
+              <span id="muteIcon">🎙️</span> <span id="muteText">麦克风开</span>
+            </button>
+            <button id="hangupBtn" class="btn btn-danger btn-sm hidden">
+              🔴 挂断通话
+            </button>
+          </div>
+        </div>
+
+        <!-- Realtime Visualizer & Stage Banner -->
+        <div class="realtime-stage">
+          <div class="visualizer-wrapper">
+            <div id="audioWave" class="audio-wave">
+              <span class="bar"></span>
+              <span class="bar"></span>
+              <span class="bar"></span>
+              <span class="bar"></span>
+              <span class="bar"></span>
+              <span class="bar"></span>
+              <span class="bar"></span>
+            </div>
+          </div>
+          <div id="stageStatusText" class="stage-status-text">
+            准备就绪。点击下方红色「开启实时连麦通话」开始
+          </div>
+        </div>
+
+        <!-- Message History Feed -->
+        <div id="chatMessages" class="chat-messages realtime-messages">
+          <div class="system-welcome-msg">
+            <div class="welcome-icon">🎒</div>
+            <div>
+              <strong>欢迎来到 Realtime 实时互动课堂！</strong>
+              <p>当前处于全双工低延迟模式。你可以随时说话，AI 将实时聆听并以纯语音作答（如电话通话般自然流畅）。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hidden Audio Element for WebRTC Remote Audio Playback -->
+        <audio id="remoteAudio" autoplay playsinline class="hidden"></audio>
+
+        <!-- Input Area (Real-time Call Button + Image + Text Send) -->
+        <div class="input-controls-area realtime-controls-area">
+          <div class="control-bar realtime-bar">
+            <!-- 1. Realtime WebRTC Toggle Call Button -->
+            <button id="toggleCallBtn" class="btn btn-call-action start-call">
+              <span class="call-icon">📞</span>
+              <span id="toggleCallBtnText">开启实时连麦通话</span>
+            </button>
+
+            <!-- 2. Snap/Upload Photo Button -->
+            <button id="cameraSnapBtn" class="btn btn-secondary btn-icon-only" title="上传/拍摄作业或图片">
+              <span class="icon">📷</span>
+            </button>
+            <input type="file" id="cameraInput" accept="image/*" class="hidden">
+
+            <!-- 3. Text Input for optional typed questions -->
+            <div class="text-input-group">
+              <input type="text" id="textInput" placeholder="输入问题（支持键盘或直接说话）..." autocomplete="off">
+              <button id="sendTextBtn" class="btn btn-primary btn-send-text" title="发送提问">
+                <span>🚀</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bottom Status Subtext -->
+          <div id="realtimeFooterStatus" class="rec-status" style="justify-content: center; margin-top: 6px;">
+            <span id="footerIcon">⚡</span>
+            <span id="footerText">阿里云百炼 Qwen-Omni 实时模型服务就绪</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Password Unlock Modal Overlay (in case session expired or direct visit) -->
+  <div id="passwordModalOverlay" class="password-modal-overlay hidden">
+    <div class="password-modal-card">
+      <div class="password-modal-icon">🔐</div>
+      <h2>请输入管理密码</h2>
+      <p class="password-modal-desc">
+        进入 Realtime 实时互动需要输入管理员密码（ADMIN_PASSWORD）。
+      </p>
+      <div class="password-input-group">
+        <input type="password" id="adminPasswordInput" placeholder="请输入管理员密码" autocomplete="off">
+        <div id="passwordErrorTip" class="password-error-tip hidden">❌ 密码不正确，请重新输入</div>
+      </div>
+      <div class="password-modal-actions">
+        <a href="index.html" class="btn btn-secondary" style="text-decoration: none; display: flex; align-items: center; justify-content: center;">返回门户</a>
+        <button id="submitPasswordBtn" class="btn btn-primary">🔓 验证密码并进入</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="realtime.js"></script>
+</body>
+</html>
