@@ -41,7 +41,7 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
-          gradle :app:assembleRelease :app:assembleDebug --stacktrace --info 2>&1 | tee ../build.log
+          gradle :app:assembleRelease :app:assembleDebug --stacktrace
 
       - name: Upload Build Log on Failure
         if: failure()

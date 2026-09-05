@@ -72,7 +72,7 @@ class AudioStreamManager {
         try {
             audioRecord?.stop()
             audioRecord?.release()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {}
         audioRecord = null
     }
 
@@ -110,7 +110,7 @@ class AudioStreamManager {
                 try {
                     val chunk = audioPlaybackQueue.take()
                     audioTrack?.write(chunk, 0, chunk.size)
-                } catch (_: InterruptedException) {
+                } catch (e: InterruptedException) {
                     break
                 }
             }
@@ -132,7 +132,7 @@ class AudioStreamManager {
             audioTrack?.pause()
             audioTrack?.flush()
             audioTrack?.play()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {}
     }
 
     fun releasePlayback() {
@@ -143,7 +143,7 @@ class AudioStreamManager {
         try {
             audioTrack?.stop()
             audioTrack?.release()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {}
         audioTrack = null
     }
 
