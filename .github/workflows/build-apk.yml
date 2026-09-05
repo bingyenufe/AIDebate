@@ -34,12 +34,12 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
-          gradle assembleRelease --stacktrace
+          gradle assembleDebug assembleRelease --stacktrace
 
       - name: Prepare Release APK
         run: |
           mkdir -p release-apk
-          APK_FILE=$(find app/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          APK_FILE=$(find app/app/build/outputs/apk/ -name "*.apk" | head -n 1)
           if [ -z "$APK_FILE" ]; then
             APK_FILE=$(find . -name "*.apk" | head -n 1)
           fi
