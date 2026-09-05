@@ -2,9 +2,6 @@ name: Build Android APK
 
 on:
   push:
-    paths:
-      - 'app/**'
-      - '.github/workflows/build-apk.yml'
     branches:
       - main
   workflow_dispatch:
@@ -14,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build & Package Android APK
+    name: Build & Release Android APK
     runs-on: ubuntu-latest
 
     steps:
@@ -27,38 +24,41 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.4'
 
       - name: Build APK with Gradle
+        working-directory: ./app
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
-          cd app
-          chmod +x gradlew || true
-          ./gradlew assembleRelease --stacktrace || gradle assembleRelease --stacktrace
+          gradle assembleRelease --stacktrace
 
-      - name: Find and Rename APK
+      - name: Prepare Release APK
         run: |
           mkdir -p release-apk
-          find . -name "*.apk" -exec cp {} release-apk/RealtimeDebate.apk \;
+          APK_FILE=$(find app/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE=$(find . -name "*.apk" | head -n 1)
+          fi
+          echo "Found APK: $APK_FILE"
+          cp "$APK_FILE" release-apk/RealtimeDebate.apk
           ls -lh release-apk/
 
-      - name: Upload APK as Workflow Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RealtimeDebate-Android-APK
           path: release-apk/RealtimeDebate.apk
 
-      - name: Create GitHub Release
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: app-v1.0
-          name: RealtimeDebate 安卓版 v1.0
+          tag_name: v1.0.0
+          name: RealtimeDebate 安卓版 v1.0.0
           body: |
             🎉 **Realtime AI 对辩助手（安卓原生版）发布！**
 
