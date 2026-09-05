@@ -8,7 +8,6 @@
     <string name="btn_end_call">🛑 挂断通话</string>
     <string name="role_title">1. 选择对辩角色</string>
     <string name="custom_role_prompt_hint">请输入自定义角色的身份立场与设定（例如：幽默风趣的高中历史老师）</string>
-    <string name="custom_duration_label">单次回答时长控制：</string>
-    <string name="custom_duration_prefix">约【</string>
-    <string name="custom_duration_suffix">】秒</string>
+    <string name="custom_duration_label">单次回答时长（秒）：</string>
+    <string name="custom_duration_hint">请输入期望回答的秒数，例如 20</string>
 </resources>

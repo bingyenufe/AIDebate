@@ -195,58 +195,28 @@
                         android:gravity="top"
                         android:minLines="2" />
 
-                    <!-- Custom Duration Window: 约【 】秒 -->
-                    <LinearLayout
+                    <!-- Custom Duration Window (Single Clean Input Window, No Brackets, No Default Value) -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/custom_duration_label"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/etCustomDuration"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/custom_duration_label"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="13sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/custom_duration_prefix"
-                            android:textColor="@color/primary"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                        <EditText
-                            android:id="@+id/etCustomDuration"
-                            android:layout_width="56dp"
-                            android:layout_height="36dp"
-                            android:background="@drawable/bg_duration_box"
-                            android:gravity="center"
-                            android:inputType="number"
-                            android:text="20"
-                            android:textColor="@color/text_primary"
-                            android:textStyle="bold"
-                            android:textSize="15sp"
-                            android:maxLength="3" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/custom_duration_suffix"
-                            android:textColor="@color/primary"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="(点击修改)"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
-                    </LinearLayout>
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/bg_edittext"
+                        android:padding="10dp"
+                        android:inputType="number"
+                        android:hint="@string/custom_duration_hint"
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/text_secondary"
+                        android:textSize="13sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

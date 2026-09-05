@@ -146,6 +146,15 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
             return
         }
 
+        if (currentRole == "custom") {
+            val durationText = binding.etCustomDuration.text.toString().trim()
+            if (durationText.isEmpty()) {
+                Toast.makeText(this, "请在时长窗口中输入单次回答时长（秒）", Toast.LENGTH_SHORT).show()
+                binding.etCustomDuration.requestFocus()
+                return
+            }
+        }
+
         binding.tvConnStatus.text = getString(R.string.status_connecting)
         binding.tvLiveStatus.text = "正在连接阿里云百炼 Qwen-Omni 实时服务..."
         binding.btnToggleCall.isEnabled = false
@@ -197,14 +206,14 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
                 3. 极短篇幅（约 6~10 秒），纯音频生动讲解，默认不输出文本。
             """.trimIndent()
             else -> {
-                // Custom Role with Duration Window: 约【 】秒
+                // Custom Role (duration entered by user, no brackets in prompt or UI)
                 val userPrompt = binding.etCustomPrompt.text.toString().ifBlank { "你是一位知识渊博、耐心友善的对话伙伴。" }
-                val durationSec = binding.etCustomDuration.text.toString().trim().toIntOrNull() ?: 20
+                val durationSec = binding.etCustomDuration.text.toString().trim()
                 """
                 $userPrompt
                 【时长与篇幅硬性约束】：
-                用户要求你的每次语音回答时长严格控制在：约【$durationSec】秒！
-                请严格按照约【$durationSec】秒的时间长度控制语速与信息量，讲完即止，坚决不可拖沓超时！
+                用户要求你的每次语音回答时长严格控制在 $durationSec 秒左右！
+                请严格按照 $durationSec 秒的时间把控语速与信息量，讲完即止，坚决不可拖沓超时！
                 纯音频口语交流，默认不输出文本。
                 """.trimIndent()
             }
