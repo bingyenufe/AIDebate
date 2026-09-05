@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/card_bg"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="⚙️ 配置阿里云 DashScope API Key"
+        android:textColor="@color/text_primary"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="请输入您的阿里云百炼/千问 API Key（以 sk- 开头）。Key 仅保存在本机安全存储中，直连阿里云，永不上报任何第三方服务器。"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:lineSpacingExtra="3dp" />
+
+    <EditText
+        android:id="@+id/etApiKey"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_edittext"
+        android:padding="12dp"
+        android:hint="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+        android:textColorHint="@color/text_secondary"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:inputType="textPassword" />
+
+</LinearLayout>

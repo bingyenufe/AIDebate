@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Realtime 对辩助教</string>
+    <string name="status_idle">● 未连接</string>
+    <string name="status_connecting">● 正在连接阿里云百炼实时服务...</string>
+    <string name="status_connected">🟢 实时连麦通话中</string>
+    <string name="btn_start_call">📞 开启实时连麦通话</string>
+    <string name="btn_end_call">🛑 挂断通话</string>
+    <string name="role_title">1. 选择对辩角色</string>
+    <string name="custom_role_prompt_hint">请输入自定义角色的身份立场与设定（例如：幽默风趣的高中历史老师）</string>
+    <string name="custom_duration_label">单次回答时长控制：</string>
+    <string name="custom_duration_prefix">约【</string>
+    <string name="custom_duration_suffix">】秒</string>
+</resources>
