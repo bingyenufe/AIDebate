@@ -3,165 +3,209 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI 智能体交互课堂 | 模式选择</title>
+  <title>财政学 AI 角色扮演辩论课堂</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="portal.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="portal-container">
+  <div class="app-container">
     <!-- Header -->
-    <header class="portal-header">
-      <div class="portal-badge">
-        <span>✨</span> 欢迎使用 AI 智能角色交互系统
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon">🏛️</span>
+        <div>
+          <h1>财政学 AI 语音辩论助教</h1>
+          <p class="subtitle">面向逻辑判断力与理论迁移能力的 AI 角色扮演对辩平台</p>
+        </div>
       </div>
-      <h1 class="portal-title">请选择您要进入的学习模式</h1>
-      <p class="portal-subtitle">
-        提供针对高校学术思辨的经典辩论助教，以及基于阿里云百炼 Qwen-Omni 全双工毫秒级低延迟的实时语音交互空间。
-      </p>
+      <div class="header-actions">
+        <button id="exportBtn" class="btn btn-secondary" disabled>
+          <span class="icon">📥</span> 导出辩论记录 (.md)
+        </button>
+      </div>
     </header>
 
-    <!-- Selection Cards -->
-    <div class="portal-cards">
-      <!-- Left Card: Classic Debate Classroom -->
-      <a href="debate.html" class="portal-card classic">
-        <div>
-          <div class="card-top">
-            <div class="card-icon-wrapper">🏛️</div>
-            <span class="card-tag free">🟢 无需密码 · 开放使用</span>
-          </div>
-          <h2 class="card-title">财政学 AI 语音辩论课堂</h2>
-          <p class="card-desc">
-            面向逻辑判断力与理论迁移能力的学术角色扮演平台。结合分段录音与学术参考材料，开展深入思辨交锋。
-          </p>
-          <ul class="card-features">
-            <li><span class="check-icon">✓</span> 🏛️ 苏格拉底 · 产婆术逻辑追问</li>
-            <li><span class="check-icon">✓</span> ⚔️ 反方辩友 · 学术立场辩论交锋</li>
-            <li><span class="check-icon">✓</span> 🤝 研讨伙伴 · 机制推演与概念澄清</li>
-            <li><span class="check-icon">✓</span> 📋 Proposal 审查 · 财税计量课题深度质询</li>
-            <li><span class="check-icon">✓</span> 📄 支持上传 PDF / TXT / MD 参考材料</li>
-          </ul>
-        </div>
-        <button class="card-btn btn-classic">
-          <span>进入经典辩论课堂</span>
-          <span>→</span>
-        </button>
-      </a>
+    <!-- Main Grid -->
+    <main class="main-content">
+      <!-- Left Sidebar: Settings & Attachments -->
+      <aside class="sidebar">
+        <!-- Section 1: Role Selection -->
+        <section class="card role-section">
+          <h2>1. 选择辩论角色</h2>
+          <div class="role-grid">
+            <div class="role-card active" data-role="socrates">
+              <div class="role-icon">🏛️</div>
+              <div class="role-info">
+                <h3>苏格拉底</h3>
+                <p>产婆术追问 · 审视观点前提</p>
+              </div>
+            </div>
 
-      <!-- Right Card: Realtime AI Debate -->
-      <div id="realtimeCard" class="portal-card realtime">
-        <div>
-          <div class="card-top">
-            <div class="card-icon-wrapper">⚡</div>
-            <span class="card-tag locked">🔐 需输入管理密码</span>
+            <div class="role-card" data-role="opponent">
+              <div class="role-icon">⚔️</div>
+              <div class="role-info">
+                <h3>反方辩友</h3>
+                <p>持相反立场 · 学术对辩交锋</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="collaborator">
+              <div class="role-icon">🤝</div>
+              <div class="role-info">
+                <h3>研讨伙伴</h3>
+                <p>平等探究 · 澄清概念与推演机制</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="proposal_reviewer">
+              <div class="role-icon">📋</div>
+              <div class="role-info">
+                <h3>Proposal 审查</h3>
+                <p>财税计量课程 · 须提供附件 · 深度审查</p>
+              </div>
+            </div>
+
+            <div class="role-card" data-role="custom">
+              <div class="role-icon">✏️</div>
+              <div class="role-info">
+                <h3>自定义角色</h3>
+                <p>自由设定角色背景与字数限制</p>
+              </div>
+            </div>
           </div>
-          <h2 class="card-title">Realtime AI Debate</h2>
-          <p class="card-desc">
-            基于阿里云百炼 <strong>qwen3.5-omni-flash-realtime</strong> 全模态端到端模型，实现毫秒级全双工实时低延迟通话。
+        </section>
+
+        <!-- Role Guidance Card -->
+        <section class="card instruction-section">
+          <h2><span id="instructionTitle">🏛️ 苏格拉底</span> 操作指引</h2>
+          <p id="instructionText" class="instruction-desc">
+            请先用语音表达你的观点（如"我认为……"），苏格拉底将通过追问引导你深入思考。你可以录制多段，录完后点击「提交」。每轮对话后认真回应他的追问。
           </p>
-          <ul class="card-features">
-            <li class="realtime-highlight"><span class="check-icon">⚡</span> 毫秒级端到端全双工实时语音通话</li>
-            <li class="realtime-highlight"><span class="check-icon">🔊</span> 全角色纯音频输出</li>
-            <li><span class="check-icon">✓</span> 🏛️ 苏格拉底</li>
-            <li><span class="check-icon">✓</span> ⚔️ 反方辩友</li>
-            <li><span class="check-icon">✓</span> 🤝 研讨伙伴</li>
-            <li><span class="check-icon">✓</span> 🎒 一年级学习助手</li>
-            <li><span class="check-icon">✓</span> 🌟 十万个为什么</li>
-            <li><span class="check-icon">✓</span> 支持语音输入、文字与拍照上传题目图片</li>
-          </ul>
+        </section>
+
+        <!-- Section 2: Custom Role Prompt Setup (Hidden by default) -->
+        <section id="customRolePanel" class="card custom-role-section hidden">
+          <h2>设定自定义角色</h2>
+          <div class="form-group">
+            <label for="customPromptInput">请输入 AI 角色的身份、视角与立场提示词：</label>
+            <textarea id="customPromptInput" placeholder="例如：你是一位坚定支持自由市场、主张缩减公共开支与政府干预的财政学教授。你语气严肃、逻辑严密，注重效率原则。"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="customWordCountInput">要求 AI 回复的字数限制 (最高500字)：</label>
+            <input type="number" id="customWordCountInput" min="10" max="500" value="200" placeholder="如：200">
+            <span class="field-tip">建议输入 50~400 字，后台上限锁定为 500 字。</span>
+          </div>
+          <button id="saveCustomRoleBtn" class="btn btn-primary btn-sm">确认角色设定</button>
+        </section>
+
+        <!-- Section 3: Optional Attachment Upload -->
+        <section class="card upload-section">
+          <h2 id="uploadSectionTitle">2. 参考背景材料 (可选)</h2>
+          <p id="uploadSectionTip" class="upload-tip">支持上传 PDF / TXT / MD 文件（≤5MB），AI 将结合材料进行追问或对辩。</p>
+          
+          <div class="file-upload-box">
+            <input type="file" id="fileInput" accept=".pdf,.txt,.md">
+            <label for="fileInput" class="file-dropzone" id="dropzone">
+              <span class="upload-icon">📄</span>
+              <span id="uploadStatusText">点击或拖拽上传 PDF / TXT / MD</span>
+            </label>
+          </div>
+          
+          <div id="fileLoadedBadge" class="file-badge hidden">
+            <span class="badge-icon">✓</span>
+            <span id="fileBadgeName" class="badge-name">已加载：document.pdf</span>
+            <button id="removeFileBtn" class="btn-icon" title="移除文件">&times;</button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Right Main Chat Area -->
+      <section class="chat-container card">
+        <!-- Chat Header / Controls -->
+        <div class="chat-header">
+          <div class="chat-status-indicator">
+            <span class="status-dot green"></span>
+            <span id="chatRoleLabel">与「苏格拉底」对话中</span>
+          </div>
+          <div class="chat-actions">
+            <button id="endDebateBtn" class="btn btn-danger btn-sm hidden">
+              🏁 结束辩论并听取总结
+            </button>
+          </div>
         </div>
-        <button class="card-btn btn-realtime">
-          <span>立即进入 Realtime AI Debate</span>
-          <span>🔓</span>
-        </button>
-      </div>
-    </div>
+
+        <!-- Message History Feed -->
+        <div id="chatMessages" class="chat-messages">
+          <div class="system-welcome-msg">
+            <div class="welcome-icon">💡</div>
+            <div>
+              <strong>欢迎来到财政学语音辩论课堂！</strong>
+              <p>请在左侧选择角色，随后在下方使用录音控件陈述你的第一个观点或立场。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio TTS Status Overlay -->
+        <div id="ttsStatusOverlay" class="tts-status hidden">
+          <span class="pulse-wave">🔊</span>
+          <span id="ttsStatusText">AI 正在语音朗读中...</span>
+          <button id="stopTtsBtn" class="btn-text">停止播放</button>
+        </div>
+
+        <!-- Input Area (Multi-segment voice + Submit) -->
+        <div class="input-controls-area">
+          <!-- Multi-segment preview chips -->
+          <div id="audioSegmentsPreview" class="segments-preview hidden">
+            <div class="segments-label">✏️ 已识别语音文本（双击或在框内直接修改校订错别字）：</div>
+            <div id="segmentsList" class="segments-list"></div>
+          </div>
+
+          <!-- Main Input Controls -->
+          <div class="control-bar">
+            <!-- Record Button -->
+            <button id="recordBtn" class="btn btn-record">
+              <span class="rec-dot"></span>
+              <span id="recordBtnText">按住/点击 说话</span>
+            </button>
+
+            <!-- Status Indicator Text -->
+            <div id="recStatus" class="rec-status">
+              <span id="recStatusIcon">🎙️</span>
+              <span id="recStatusText">准备就绪，点击开始说话</span>
+            </div>
+
+            <!-- Submit Button -->
+            <button id="submitDebateBtn" class="btn btn-primary btn-submit" disabled>
+              <span>提交发问</span>
+              <span class="send-icon">🚀</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <!-- Password Unlock Modal -->
-  <div id="passwordModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <div class="modal-icon">🔐</div>
-      <h3 class="modal-title">请输入管理密码</h3>
-      <p class="modal-desc">
-        Realtime 实时模式采用阿里云百炼专属实时计算链路，请输入教师/管理员密码进入。
+  <!-- Password Unlock Modal Overlay -->
+  <div id="passwordModalOverlay" class="password-modal-overlay hidden">
+    <div class="password-modal-card">
+      <div class="password-modal-icon">🔐</div>
+      <h2>今日公共免费额度已满</h2>
+      <p class="password-modal-desc">
+        全站今日公共对话额度已全部分配完毕。如需在课堂或课后继续使用，请输入教师/管理员解锁密码。
       </p>
-      <input type="password" id="adminPasswordInput" class="modal-input" placeholder="请输入密码" autocomplete="off">
-      <div id="modalError" class="modal-error hidden">❌ 密码不正确，请重新输入</div>
-      <div class="modal-actions">
-        <button id="cancelModalBtn" class="btn-secondary">取消</button>
-        <button id="submitModalBtn" class="btn-primary">验证并进入</button>
+      <div class="password-input-group">
+        <input type="password" id="adminPasswordInput" placeholder="请输入教师解锁密码" autocomplete="off">
+        <div id="passwordErrorTip" class="password-error-tip hidden">❌ 密码不正确，请重新输入</div>
+      </div>
+      <div class="password-modal-actions">
+        <button id="cancelPasswordBtn" class="btn btn-secondary">取消</button>
+        <button id="submitPasswordBtn" class="btn btn-primary">🔓 验证密码并继续</button>
       </div>
     </div>
   </div>
 
-  <script>
-    const realtimeCard = document.getElementById('realtimeCard');
-    const passwordModal = document.getElementById('passwordModal');
-    const adminPasswordInput = document.getElementById('adminPasswordInput');
-    const modalError = document.getElementById('modalError');
-    const cancelModalBtn = document.getElementById('cancelModalBtn');
-    const submitModalBtn = document.getElementById('submitModalBtn');
-
-    // Click right card
-    realtimeCard.addEventListener('click', () => {
-      const savedPwd = sessionStorage.getItem('realtime_admin_pwd');
-      if (savedPwd) {
-        // Already authenticated
-        window.location.href = 'realtime.html';
-        return;
-      }
-      passwordModal.classList.remove('hidden');
-      modalError.classList.add('hidden');
-      adminPasswordInput.value = '';
-      setTimeout(() => adminPasswordInput.focus(), 100);
-    });
-
-    cancelModalBtn.addEventListener('click', () => {
-      passwordModal.classList.add('hidden');
-    });
-
-    submitModalBtn.addEventListener('click', verifyAndEnter);
-    adminPasswordInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') verifyAndEnter();
-    });
-
-    async function verifyAndEnter() {
-      const pwd = adminPasswordInput.value.trim();
-      if (!pwd) {
-        modalError.textContent = '⚠️ 请输入密码';
-        modalError.classList.remove('hidden');
-        return;
-      }
-
-      submitModalBtn.disabled = true;
-      submitModalBtn.textContent = '验证中...';
-
-      try {
-        const res = await fetch('/api/verify-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: pwd })
-        });
-
-        const data = await res.json();
-        if (res.ok && data.success) {
-          sessionStorage.setItem('realtime_admin_pwd', pwd);
-          window.location.href = 'realtime.html';
-        } else {
-          modalError.textContent = '❌ ' + (data.error || '密码错误，请重新输入');
-          modalError.classList.remove('hidden');
-          adminPasswordInput.focus();
-        }
-      } catch (e) {
-        modalError.textContent = '❌ 验证服务异常: ' + e.message;
-        modalError.classList.remove('hidden');
-      } finally {
-        submitModalBtn.disabled = false;
-        submitModalBtn.textContent = '验证并进入';
-      }
-    }
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
