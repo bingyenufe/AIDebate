@@ -89,21 +89,20 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.0.0
-          name: RealtimeDebate 安卓版 v1.0.0
+          tag_name: v1.0.1
+          name: RealtimeDebate 安卓版 v1.0.1 (修复实时对话协议与音色问题)
           body: |
-            🎉 **Realtime AI 对辩助手（安卓原生版）发布！**
+            🎉 **Realtime AI 对辩助手（安卓原生版 v1.0.1）更新！**
 
-            ### 🚀 傻瓜式安装说明：
-            1. 在安卓手机浏览器中点击下方 `RealtimeDebate.apk` 下载；
-            2. 下载完成后点击安装（如提示未知应用来源，选择允许安装）；
-            3. 首次打开在右上角填写您的阿里云 DashScope API Key（仅需填写一次，保存在手机本地）；
-            4. 点击「开启实时连麦通话」，即刻享受毫秒级全双工对辩！
+            ### 🛠️ 本次修复：
+            - **修复百炼 Realtime API 握手协议**：修正 `session.update` 中的模态配置（从单个 `audio` 改为 `["text", "audio"]`），避免服务端参数校验拒绝。
+            - **匹配阿里云百炼官方音色**：将反方辩友、苏格拉底等角色的音色全面修正为百炼官方支持的 `Ethan`（男声，坚定有力）与 `Cherry`（女声，自然亲切）及 `Serena`（女声，知性稳重），解决原 `"alloy"` 导致的立即断开问题。
+            - **增强错误可见性**：若发生网络断开或 Key 无效，界面正中央将直接清晰提示具体错误信息。
 
-            ### ✨ 核心特性：
-            - 直连阿里云千问 `qwen3.5-omni-flash-realtime` 实时模型，零服务器中转。
-            - 包含苏格拉底、反方辩友、研讨伙伴、一年级学习助手、十万个为什么。
-            - **自定义角色**：单行独立窗口自由输入单次回答时长（秒）。
+            ### 🚀 安装与使用：
+            1. 点击下方 `RealtimeDebate.apk` 直接下载到手机；
+            2. 安装覆盖原版本；
+            3. 点击「开启实时连麦通话」，开始全双工实时语音对辩！
           files: release-apk/RealtimeDebate.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

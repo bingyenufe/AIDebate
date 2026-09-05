@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
     }
 
     private fun startCall() {
-        val apiKey = prefs.getString(KEY_API_KEY, "") ?: ""
+        val apiKey = prefs.getString(KEY_API_KEY, "")?.trim() ?: ""
         if (apiKey.isBlank()) {
             Toast.makeText(this, "请先在右上角设置中填写您的 API Key", Toast.LENGTH_SHORT).show()
             showSettingsDialog(isFirstTime = true)
@@ -159,10 +159,18 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         binding.tvLiveStatus.text = "正在连接阿里云百炼 Qwen-Omni 实时服务..."
         binding.btnToggleCall.isEnabled = false
 
+        // Disable role switching while call is in progress
+        for (i in 0 until binding.roleChipGroup.childCount) {
+            binding.roleChipGroup.getChildAt(i).isEnabled = false
+        }
+
         val prompt = buildRolePrompt()
+        // DashScope Realtime valid voices: Ethan (male), Serena (female), Cherry (female), Chelsie (female)
         val voice = when (currentRole) {
-            "first_grade", "whys" -> "cherry" // gentle friendly female voice
-            else -> "alloy"
+            "socrates", "opponent" -> "Ethan"
+            "collaborator" -> "Serena"
+            "first_grade", "whys" -> "Cherry"
+            else -> "Cherry"
         }
 
         realtimeClient.connect(apiKey, prompt, voice)
@@ -220,18 +228,25 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         }
     }
 
-    private fun endCall() {
+    private fun endCall(preserveStatusText: Boolean = false) {
         realtimeClient.disconnect()
         audioManager.releaseAll()
 
         isConnected = false
         binding.tvConnStatus.text = getString(R.string.status_idle)
-        binding.tvLiveStatus.text = "通话已结束。随时点击按钮重新开启对辩。"
+        if (!preserveStatusText) {
+            binding.tvLiveStatus.text = "通话已结束。随时点击按钮重新开启对辩。"
+        }
         binding.tvVisualizerEmoji.text = "🎙️"
         binding.btnToggleCall.text = getString(R.string.btn_start_call)
         binding.btnToggleCall.setBackgroundColor(ContextCompat.getColor(this, R.color.btn_call))
         binding.btnToggleCall.isEnabled = true
         binding.btnMute.visibility = View.GONE
+
+        // Re-enable role selection
+        for (i in 0 until binding.roleChipGroup.childCount) {
+            binding.roleChipGroup.getChildAt(i).isEnabled = true
+        }
     }
 
     private fun showSettingsDialog(isFirstTime: Boolean) {
@@ -287,14 +302,20 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
     override fun onDisconnected(reason: String) {
         runOnUiThread {
-            endCall()
+            if (reason.isNotBlank() && reason != "User ended call") {
+                binding.tvLiveStatus.text = "通话断开: $reason"
+                endCall(preserveStatusText = true)
+            } else {
+                endCall(preserveStatusText = false)
+            }
         }
     }
 
     override fun onError(error: String) {
         runOnUiThread {
             Toast.makeText(this, error, Toast.LENGTH_LONG).show()
-            endCall()
+            binding.tvLiveStatus.text = "❌ $error"
+            endCall(preserveStatusText = true)
         }
     }
 

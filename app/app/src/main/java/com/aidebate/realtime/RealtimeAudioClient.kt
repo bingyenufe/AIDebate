@@ -33,7 +33,7 @@ class RealtimeAudioClient(
     private var webSocket: WebSocket? = null
     private var isConnected = false
 
-    fun connect(apiKey: String, systemPrompt: String, voice: String = "cherry") {
+    fun connect(apiKey: String, systemPrompt: String, voice: String = "Cherry") {
         if (apiKey.isBlank()) {
             listener.onError("未配置 API Key，请在右上角设置中填写")
             return
@@ -59,16 +59,24 @@ class RealtimeAudioClient(
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "WebSocket closing: $code / $reason")
                 isConnected = false
-                listener.onDisconnected(reason)
+                val reasonText = if (reason.isNotBlank()) " ($reason)" else ""
+                if (code != 1000) {
+                    listener.onError("连接被服务端断开 (状态码 $code$reasonText)")
+                } else {
+                    listener.onDisconnected(reason)
+                }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "WebSocket failure", t)
                 isConnected = false
-                val errorMsg = if (response?.code == 401) {
-                    "鉴权失败 (401)：请检查您的 API Key 是否正确"
-                } else {
-                    "连接失败: ${t.localizedMessage ?: "网络错误"}"
+                val respBody = try { response?.body?.string() } catch (e: Exception) { null }
+                val errorMsg = when {
+                    response?.code == 401 -> "鉴权失败 (401)：请检查您的 API Key 是否正确"
+                    response?.code == 403 -> "权限不足 (403)：请检查您的账户权限或欠费状态"
+                    response?.code == 400 -> "请求错误 (400)：${respBody ?: "参数错误"}"
+                    response != null -> "连接异常 (${response.code})：${respBody ?: response.message}"
+                    else -> "网络连接失败: ${t.localizedMessage ?: "无法连接到服务器，请检查网络"}"
                 }
                 listener.onError(errorMsg)
             }
@@ -76,7 +84,9 @@ class RealtimeAudioClient(
     }
 
     fun sendSessionUpdate(instructions: String, voice: String) {
+        // DashScope Realtime requires modalities to be ["text", "audio"]
         val modalitiesArray = JSONArray().apply {
+            put("text")
             put("audio")
         }
 
@@ -84,10 +94,12 @@ class RealtimeAudioClient(
             put("modalities", modalitiesArray)
             put("instructions", instructions)
             put("voice", voice)
+            put("input_audio_format", "pcm")
+            put("output_audio_format", "pcm")
             put("turn_detection", JSONObject().apply {
                 put("type", "server_vad")
                 put("threshold", 0.5)
-                put("silence_duration_ms", 600)
+                put("silence_duration_ms", 800)
             })
         }
 
@@ -97,7 +109,7 @@ class RealtimeAudioClient(
         }
 
         webSocket?.send(event.toString())
-        Log.d(TAG, "Sent session.update")
+        Log.d(TAG, "Sent session.update: $event")
     }
 
     fun sendAudioChunk(pcmBytes: ByteArray) {
@@ -113,7 +125,22 @@ class RealtimeAudioClient(
     private fun handleServerEvent(jsonText: String) {
         try {
             val event = JSONObject(jsonText)
-            when (event.optString("type")) {
+            val type = event.optString("type")
+            when (type) {
+                "error" -> {
+                    val errorObj = event.optJSONObject("error")
+                    val msg = errorObj?.optString("message") 
+                        ?: errorObj?.optString("code") 
+                        ?: jsonText
+                    Log.e(TAG, "DashScope error event: $msg")
+                    listener.onError("DashScope服务错误: $msg")
+                }
+                "session.created" -> {
+                    Log.d(TAG, "DashScope session created: $jsonText")
+                }
+                "session.updated" -> {
+                    Log.d(TAG, "DashScope session updated successfully")
+                }
                 "response.audio.delta" -> {
                     val deltaBase64 = event.optString("delta")
                     if (deltaBase64.isNotEmpty()) {
