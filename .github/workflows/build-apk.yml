@@ -44,7 +44,7 @@ jobs:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           set -o pipefail
-          gradle :app:assembleDebug --stacktrace 2>&1 | tee /tmp/build.log || {
+          gradle :app:assembleDebug :app:assembleRelease --stacktrace 2>&1 | tee /tmp/build.log || {
             echo "Build failed! Extracting cause..."
             grep -B 2 -A 40 "What went wrong" /tmp/build.log > /tmp/error.txt || tail -n 80 /tmp/build.log > /tmp/error.txt
             exit 1
