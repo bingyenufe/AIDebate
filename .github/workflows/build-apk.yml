@@ -41,8 +41,9 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
+          set -o pipefail
           gradle :app:assembleRelease :app:assembleDebug --stacktrace 2>&1 | tee /tmp/build.log || {
-            tail -n 80 /tmp/build.log > /tmp/error.txt
+            tail -n 100 /tmp/build.log > /tmp/error.txt
             exit 1
           }
 
@@ -64,6 +65,12 @@ jobs:
           APK_FILE=$(find . -name "*release*.apk" -type f | head -n 1)
           if [ -z "$APK_FILE" ]; then
             APK_FILE=$(find . -name "*.apk" -type f | head -n 1)
+          fi
+          if [ -z "$APK_FILE" ]; then
+            echo "ERROR: No APK found!"
+            tail -n 100 /tmp/build.log
+            tail -n 100 /tmp/build.log > /tmp/error.txt
+            exit 1
           fi
           echo "Selected APK: $APK_FILE"
           cp "$APK_FILE" release-apk/RealtimeDebate.apk
