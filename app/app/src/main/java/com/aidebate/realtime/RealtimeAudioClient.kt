@@ -33,7 +33,7 @@ class RealtimeAudioClient(
     private var webSocket: WebSocket? = null
     private var isConnected = false
 
-    fun connect(apiKey: String, systemPrompt: String, voice: String = "Cherry") {
+    fun connect(apiKey: String, systemPrompt: String, voice: String = "Tina") {
         if (apiKey.isBlank()) {
             listener.onError("未配置 API Key，请在右上角设置中填写")
             return
@@ -93,7 +93,9 @@ class RealtimeAudioClient(
         val sessionObj = JSONObject().apply {
             put("modalities", modalitiesArray)
             put("instructions", instructions)
-            put("voice", voice)
+            if (voice.isNotBlank()) {
+                put("voice", voice)
+            }
             put("input_audio_format", "pcm")
             put("output_audio_format", "pcm")
             put("turn_detection", JSONObject().apply {

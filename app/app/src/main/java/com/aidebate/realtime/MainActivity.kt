@@ -165,12 +165,10 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         }
 
         val prompt = buildRolePrompt()
-        // DashScope Realtime valid voices: Ethan (male), Serena (female), Cherry (female), Chelsie (female)
+        // DashScope Qwen3.5-Omni Realtime valid voices: Tina (default warm female), Ethan (energetic male)
         val voice = when (currentRole) {
             "socrates", "opponent" -> "Ethan"
-            "collaborator" -> "Serena"
-            "first_grade", "whys" -> "Cherry"
-            else -> "Cherry"
+            else -> "Tina"
         }
 
         realtimeClient.connect(apiKey, prompt, voice)
