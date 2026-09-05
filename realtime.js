@@ -393,24 +393,6 @@ function initCallActions() {
       }
     }
   });
-
-  const configWorkspaceBtn = document.getElementById('configWorkspaceBtn');
-  if (configWorkspaceBtn) {
-    configWorkspaceBtn.addEventListener('click', () => {
-      const current = localStorage.getItem('dashscope_workspace_id') || '';
-      const input = prompt(
-        '【配置阿里云百炼专属业务空间 ID】\n\n' +
-        '百炼 WebRTC 实时音视频通信需要通过您的专属业务空间建立通道。\n' +
-        '请登录阿里云百炼控制台 (https://bailian.console.aliyun.com/)，在右上角头像/业务空间管理中查看空间 ID（格式形如 llm-xxxxxx 或 ws-xxxxxx）：\n\n' +
-        '（若您已在 Vercel 环境变量中配置了 DASHSCOPE_WORKSPACE_ID，此处可留空）',
-        current
-      );
-      if (input !== null) {
-        localStorage.setItem('dashscope_workspace_id', input.trim());
-        alert(input.trim() ? `业务空间 ID 已配置为：${input.trim()}` : '已清空本地配置，将使用 Vercel 服务端环境变量。');
-      }
-    });
-  }
 }
 
 async function startRealtimeCall() {
@@ -483,41 +465,22 @@ async function startRealtimeCall() {
     await waitForIceGathering(pc);
 
     // 9. Exchange SDP via backend proxy
-    const clientWorkspaceId = localStorage.getItem('dashscope_workspace_id') || '';
     const res = await fetch('/api/realtime-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Admin-Password': pwd,
-        'X-Workspace-Id': clientWorkspaceId
+        'X-Admin-Password': pwd
       },
       body: JSON.stringify({
         sdp: pc.localDescription.sdp,
         password: pwd,
-        model: 'qwen3.5-omni-flash-realtime',
-        workspaceId: clientWorkspaceId
+        model: 'qwen3.5-omni-flash-realtime'
       })
     });
 
     const data = await res.json();
     if (!res.ok || !data.sdp) {
-      if (data.error === 'WORKSPACE_ID_REQUIRED' || (data.message && data.message.includes('业务空间 ID')) || res.status === 404) {
-        const inputId = prompt(
-          '【阿里云百炼 WebRTC 连接需配置业务空间 ID】\n\n' +
-          '阿里云百炼 WebRTC 实时通信需要使用您的专属业务空间域名。\n' +
-          '请登录阿里云百炼控制台 (https://bailian.console.aliyun.com/)，在右上角头像/业务空间管理中查看业务空间 ID（格式形如 llm-xxxxxx 或 ws-xxxxxx）：\n\n' +
-          '（提示：您也可以在 Vercel 环境变量中添加 DASHSCOPE_WORKSPACE_ID 永久生效）',
-          clientWorkspaceId
-        );
-        if (inputId !== null && inputId.trim()) {
-          localStorage.setItem('dashscope_workspace_id', inputId.trim());
-          alert(`业务空间 ID 已保存为 ${inputId.trim()}！正在重新发起连麦通话...`);
-          endRealtimeCall();
-          setTimeout(startRealtimeCall, 500);
-          return;
-        }
-      }
-      throw new Error(data.error || data.message || 'WebRTC 握手失败');
+      throw new Error(data.error || data.message || '实时会话建立失败');
     }
 
     // 10. Set remote Answer SDP
