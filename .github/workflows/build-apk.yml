@@ -41,14 +41,20 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
-          gradle :app:assembleRelease :app:assembleDebug --stacktrace
+          gradle :app:assembleRelease :app:assembleDebug --stacktrace 2>&1 | tee /tmp/build.log || {
+            tail -n 80 /tmp/build.log > /tmp/error.txt
+            exit 1
+          }
 
-      - name: Upload Build Log on Failure
+      - name: Post Failure Error Report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: softprops/action-gh-release@v2
         with:
-          name: build-failure-log
-          path: build.log
+          tag_name: build-error
+          name: 编译错误报告
+          body_path: /tmp/error.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare Release APK
         run: |
