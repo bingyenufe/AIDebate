@@ -2,19 +2,25 @@ package com.aidebate.realtime
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
 import com.aidebate.realtime.databinding.ActivityMainBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 class MainActivity : AppCompatActivity(), RealtimeListener {
 
@@ -23,13 +29,14 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
     private val audioManager = AudioStreamManager()
     private lateinit var realtimeClient: RealtimeAudioClient
+    private var callScope: CoroutineScope? = null
 
     private var currentRole = "socrates"
     private var isConnected = false
     private var isMuted = false
 
     companion object {
-        private const val REQ_CODE_RECORD_AUDIO = 1001
+        private const val REQ_CODE_PERMISSIONS = 1001
         private const val PREFS_NAME = "realtime_debate_prefs"
         private const val KEY_API_KEY = "dashscope_api_key"
     }
@@ -44,12 +51,40 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
         setupRoleSelection()
         setupButtons()
+        setupBackPressInterceptor()
         updateRoleUI()
 
         // Check if API key is already configured
         val savedKey = prefs.getString(KEY_API_KEY, "")
         if (savedKey.isNullOrBlank()) {
             showSettingsDialog(isFirstTime = true)
+        }
+    }
+
+    private fun setupBackPressInterceptor() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isConnected) {
+                    // Prevent accidental gesture/back button from destroying call
+                    moveTaskToBack(true)
+                    Toast.makeText(
+                        this@MainActivity,
+                        "通话在后台保持进行中。如需退出请点击【挂断通话】按钮",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent?.action == RealtimeForegroundService.ACTION_HANGUP) {
+            endCall()
         }
     }
 
@@ -121,20 +156,31 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
                 audioManager.stopRecording()
             } else {
                 binding.btnMute.text = "🎙️ 麦克风已开"
-                audioManager.startRecording(lifecycleScope) { chunk ->
-                    realtimeClient.sendAudioChunk(chunk)
+                callScope?.let { scope ->
+                    audioManager.startRecording(scope) { chunk ->
+                        realtimeClient.sendAudioChunk(chunk)
+                    }
                 }
             }
         }
     }
 
     private fun checkPermissionAndStartCall() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED) {
+        val permissions = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        val ungranted = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (ungranted.isNotEmpty()) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                REQ_CODE_RECORD_AUDIO
+                ungranted.toTypedArray(),
+                REQ_CODE_PERMISSIONS
             )
             return
         }
@@ -244,6 +290,10 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
     }
 
     private fun endCall(preserveStatusText: Boolean = false) {
+        RealtimeForegroundService.stop(this)
+        callScope?.cancel()
+        callScope = null
+
         realtimeClient.disconnect()
         audioManager.releaseAll()
 
@@ -286,10 +336,13 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_CODE_RECORD_AUDIO && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startCall()
-        } else {
-            Toast.makeText(this, "需要麦克风权限以进行语音通话", Toast.LENGTH_LONG).show()
+        if (requestCode == REQ_CODE_PERMISSIONS) {
+            val audioGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            if (audioGranted) {
+                startCall()
+            } else {
+                Toast.makeText(this, "需要麦克风权限以进行语音通话", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -305,9 +358,16 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
             binding.btnToggleCall.isEnabled = true
             binding.btnMute.visibility = View.VISIBLE
 
-            // Start Audio Record & Playback
-            audioManager.startPlayback(lifecycleScope)
-            audioManager.startRecording(lifecycleScope) { chunk ->
+            // Start foreground service for background keepalive
+            RealtimeForegroundService.start(this@MainActivity)
+
+            // Start Audio Record & Playback on independent callScope
+            callScope?.cancel()
+            val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+            callScope = scope
+
+            audioManager.startPlayback(scope)
+            audioManager.startRecording(scope) { chunk ->
                 if (!isMuted) {
                     realtimeClient.sendAudioChunk(chunk)
                 }
