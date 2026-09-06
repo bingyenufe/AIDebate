@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎙️ Realtime 语音提示词调试台 (Prompt Debugger)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="logo-area">
+      <h1>🎙️ Realtime 提示词调试工作台</h1>
+      <span class="subtitle">百炼 qwen3.5-omni-flash-realtime 全双工实时调优</span>
+    </div>
+    <div class="header-actions">
+      <div class="api-key-box">
+        <label for="apiKey">🔑 API Key:</label>
+        <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+        <button id="btnToggleKeyVisibility" title="显示/隐藏 Key">👁️</button>
+      </div>
+      <div id="connBadge" class="badge badge-idle">🔴 未连接</div>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Left Column: Prompt & Tuning Settings -->
+    <section class="panel left-panel">
+      <div class="panel-header">
+        <h2>🛠️ 提示词与优化策略试验田</h2>
+        <button id="btnResetPrompt" class="btn-text">🔄 重置预设</button>
+      </div>
+
+      <!-- Role Preset Selector -->
+      <div class="form-group">
+        <label>1. 选择对辩预设角色：</label>
+        <div class="chip-group" id="roleChips">
+          <button class="chip active" data-role="socrates">🏛️ 苏格拉底</button>
+          <button class="chip" data-role="opponent">⚔️ 反方辩友</button>
+          <button class="chip" data-role="collaborator">🤝 研讨伙伴</button>
+          <button class="chip" data-role="first_grade">🎒 一年级助教</button>
+          <button class="chip" data-role="whys">🌟 十万个为什么</button>
+          <button class="chip" data-role="custom">✏️ 自定义角色</button>
+        </div>
+      </div>
+
+      <!-- Prompt Textarea -->
+      <div class="form-group flex-1">
+        <div class="label-row">
+          <label for="promptEditor">2. 核心系统提示词（Prompt）：</label>
+          <span class="char-count" id="promptCharCount">0 字</span>
+        </div>
+        <textarea id="promptEditor" rows="9" placeholder="在此编辑提示词..."></textarea>
+      </div>
+
+      <!-- Duration & Anti-Babbling Strategy Controls -->
+      <div class="strategy-card">
+        <h3>⚡ 时长与语速硬核约束控制</h3>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="inputDuration">⏱️ 期望单次时长（秒）：</label>
+            <input type="number" id="inputDuration" value="10" min="3" max="60">
+          </div>
+          <div class="form-group">
+            <label for="voiceSelect">🗣️ 官方音色：</label>
+            <select id="voiceSelect">
+              <option value="Tina" selected>Tina (官方女声 - 甜美温暖奶茶感)</option>
+              <option value="Ethan">Ethan (官方男声 - 阳光坚定普通话)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="strategy-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkAutoWordLimit" checked>
+            <span><strong>字数硬刹车换算</strong>（自动将秒数折算为字数上限，如 10 秒限制 35 字以内，严禁超 2 句）</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkBreathPunctuation">
+            <span><strong>呼吸标点法（专治语速过快）</strong>（强行注入逗号与“……”拉大字间距停顿，制造幼儿慢速感）</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkNoBabbling" checked>
+            <span><strong>反废话拦截</strong>（严禁开场白、严禁寒暄铺垫、讲完核心观点立刻闭嘴）</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Button Group -->
+      <div class="btn-row">
+        <button id="btnExportKotlin" class="btn btn-secondary">📋 复制为安卓 Kotlin 代码</button>
+      </div>
+    </section>
+
+    <!-- Right Column: Live Call, Metrics & Transcripts -->
+    <section class="panel right-panel">
+      <!-- Call Control Center -->
+      <div class="call-control-card">
+        <div class="visualizer-area">
+          <div class="visualizer-emoji" id="visualizerEmoji">🎙️</div>
+          <div class="call-live-text" id="callLiveStatus">点击下方按钮开始全双工实时连麦测试</div>
+          <div class="audio-bar-container" id="audioBarContainer">
+            <div class="audio-bar" id="audioBar"></div>
+          </div>
+        </div>
+
+        <div class="control-buttons">
+          <button id="btnToggleCall" class="btn btn-call">📞 开启实时连麦通话</button>
+          <button id="btnMute" class="btn btn-mute" style="display: none;">🎙️ 麦克风已开</button>
+        </div>
+      </div>
+
+      <!-- Realtime Timing & Quality Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-title">⏱️ 本次 AI 讲话耗时</div>
+          <div class="metric-value" id="valDuration">0.0 <span class="unit">秒</span></div>
+          <div class="metric-sub" id="valDurationTarget">目标: 10 秒</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">📝 回答字数统计</div>
+          <div class="metric-value" id="valWordCount">0 <span class="unit">字</span></div>
+          <div class="metric-sub" id="valWordEstimate">预估字数上限: ~35 字</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">⚡ 实际发音语速</div>
+          <div class="metric-value" id="valSpeed">0.0 <span class="unit">字/秒</span></div>
+          <div class="metric-sub">正常中文口语约 3.8 字/秒</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">🎯 遵从度评估</div>
+          <div class="metric-value-tag tag-idle" id="valEvaluation">待测试</div>
+          <div class="metric-sub" id="valEvalDetail">连麦说完后自动分析</div>
+        </div>
+      </div>
+
+      <!-- Realtime Transcript Box -->
+      <div class="transcript-card">
+        <div class="transcript-header">
+          <h3>💬 实时对话与语音转写字幕</h3>
+          <button id="btnClearLog" class="btn-text">清空记录</button>
+        </div>
+        <div class="transcript-content" id="transcriptContent">
+          <div class="empty-hint">对话开始后，您说的话与 AI 生成的文字字幕将在此实时显示...</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
