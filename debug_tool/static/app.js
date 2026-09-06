@@ -5,32 +5,36 @@ const ROLE_PRESETS = {
   socrates: `你是古希腊哲学家苏格拉底。
 【执行规则】：
 1. 你的任务是通过追问帮助学生审视观点前提与逻辑漏洞，绝不直接给出答案。
-2. 聚焦学生观点中的核心逻辑漏洞，每次只提出一个核心反问。
+2. 聚焦学生观点中的核心逻辑漏洞，每次只提出一个核心反问。用一两句表达清楚，字数控制在 30 字以内。
 3. 纯音频口语交流，像面对面即时交锋，精炼聚焦，默认不输出文本。`,
 
   opponent: `你是一位辩论赛中立场坚定的学术反方辩友。
 【执行规则】：
 1. 持相反立场展开学术交锋，从学术角度提出核心反驳论据。
-2. 语气坚定严谨、尊重对手，集中火力反驳 1 个关键论据。
+2. 语气坚定严谨、尊重对手，集中火力反驳 1 个关键论据。用两三句表达清楚，字数控制在 50 字以内。
 3. 纯音频口语作答，像面对面对辩一样干脆紧凑，默认不输出文本。`,
 
   collaborator: `你是理性客观的学术研讨伙伴。
 【执行规则】：
 1. 不迎合、不挑刺，帮助澄清概念、补充前置假设并提出建构式启发问题。
-2. 精炼直接，像面对面学术讨论一样紧凑（字数严格控制在 100~150 字）。
+2. 精炼直接，像面对面学术讨论一样紧凑。每次集中讨论一个点，用两三句表达清楚，字数控制在 50 字以内。
 3. 纯音频口语交流，默认不输出文本。`,
 
   first_grade: `你是专为 6 岁一年级小朋友设计的温柔助教。
 【执行规则】：
-1. 语速必须平缓温和、从容不迫、不可太快，充满耐心与鼓励。
-2. 回答时先直接、明确地给出正确答案，再用一句简单的生活记法或表扬收尾。
-3. 极其短小精炼，一气呵成，讲完即止，纯音频亲切启发，默认不输出文本。`,
+1. 必须平缓温和、不可太快，保证小朋友跟得上。
+2. 采用引导式教学：引导学生自己思考、得出答案。不可直接给出正确答案。
+3. 保证回答深入浅出，可以使用一些生动有趣的生活小比喻。
+4. 每次你回复只能表达一个观点，长度控制在两三句，字数控制在 45 字以内。
+5. 纯音频生动讲解，默认不输出文本。`,
 
   whys: `你是面向 6 岁小朋友的“十万个为什么”趣味科普助手。
 【执行规则】：
-1. 语速必须平缓温和、生动有趣，不可太快。
+1. 必须平缓温和、不可太快，保证小朋友跟得上。
 2. 用生动有趣的生活小比喻解释身边的自然科学秘密，严禁使用任何抽象深奥的科学术语。
-3. 极短篇幅，纯音频生动讲解，默认不输出文本。`,
+3. 每次你回复只能表达一个观点，长度控制在一两句，字数控制在 30 字以内。
+4. 适当给予鼓励/表扬，但不可每句话都含鼓励/表扬。
+5. 纯音频生动讲解，默认不输出文本。`,
 
   custom: `你是一位知识渊博、耐心友善的对话伙伴。
 根据用户设定的身份与语境展开实时交流。`
@@ -74,9 +78,6 @@ class RealtimeDebuggerApp {
 
     this.inputDuration = document.getElementById('inputDuration');
     this.voiceSelect = document.getElementById('voiceSelect');
-    this.chkAutoWordLimit = document.getElementById('chkAutoWordLimit');
-    this.chkBreathPunctuation = document.getElementById('chkBreathPunctuation');
-    this.chkNoBabbling = document.getElementById('chkNoBabbling');
     this.btnExportKotlin = document.getElementById('btnExportKotlin');
 
     this.btnToggleCall = document.getElementById('btnToggleCall');
@@ -178,65 +179,46 @@ class RealtimeDebuggerApp {
     this.promptEditor.value = ROLE_PRESETS[role] || '';
     this.promptCharCount.textContent = `${this.promptEditor.value.length} 字`;
 
-    // Recommend voice based on role
-    if (role === 'socrates' || role === 'opponent') {
+    // Role-specific voice and duration based on user tuning
+    if (role === 'socrates') {
       this.voiceSelect.value = 'Ethan';
-    } else {
+      this.inputDuration.value = 8;
+    } else if (role === 'opponent') {
+      this.voiceSelect.value = 'Ethan';
+      this.inputDuration.value = 12;
+    } else if (role === 'collaborator') {
       this.voiceSelect.value = 'Tina';
-    }
-
-    // Adjust strategy defaults for child roles
-    if (role === 'first_grade' || role === 'whys') {
-      this.chkBreathPunctuation.checked = true;
+      this.inputDuration.value = 12;
+    } else if (role === 'first_grade') {
+      this.voiceSelect.value = 'Tina';
+      this.inputDuration.value = 12;
+    } else if (role === 'whys') {
+      this.voiceSelect.value = 'Tina';
       this.inputDuration.value = 8;
     } else {
-      this.inputDuration.value = 12;
+      this.voiceSelect.value = 'Tina';
+      this.inputDuration.value = 10;
     }
     this.updateDurationEstimates();
   }
 
   updateDurationEstimates() {
     const sec = parseInt(this.inputDuration.value, 10) || 10;
-    const estWords = Math.round(sec * 3.5);
     this.valDurationTarget.textContent = `目标: ${sec} 秒`;
-    this.valWordEstimate.textContent = `预估字数上限: ~${estWords} 字`;
+
+    // Match word limit directly from the prompt text
+    const match = this.promptEditor.value.match(/字数控制在\s*(\d+)\s*字以内/);
+    if (match) {
+      this.valWordEstimate.textContent = `提示词约束上限: ${match[1]} 字`;
+    } else {
+      const estWords = Math.round(sec * 3.8);
+      this.valWordEstimate.textContent = `预估字数: ~${estWords} 字`;
+    }
   }
 
   buildFinalInstructions() {
-    let basePrompt = this.promptEditor.value.trim();
-    const durationSec = parseInt(this.inputDuration.value, 10) || 10;
-    const maxWords = Math.round(durationSec * 3.5);
-
-    let constraints = [];
-
-    // Strategy 1: Word count hard ceiling
-    if (this.chkAutoWordLimit.checked) {
-      constraints.push(
-        `【严格时长与字数硬刹车】：用户要求你的单次语音回答时长严格控制在约 ${durationSec} 秒！` +
-        `根据自然语速换算，你的单次回答汉字总数【严禁超过 ${maxWords} 字】，严禁超过 2 句话！` +
-        `讲完核心要点立刻闭嘴终止输出，坚决不可拖沓超时！`
-      );
-    }
-
-    // Strategy 2: Respiratory punctuation for slow child pacing
-    if (this.chkBreathPunctuation.checked) {
-      constraints.push(
-        `【极慢语速与停顿排版约束】：模仿给低年级小朋友讲睡前故事的极慢节奏，` +
-        `在每个词组与短句之间必须高频使用逗号或省略号“……”拉开呼吸停顿！` +
-        `示范：“小朋友……真棒！我们……先来看……这一题……”`
-      );
-    }
-
-    // Strategy 3: Anti-babbling
-    if (this.chkNoBabbling.checked) {
-      constraints.push(
-        `【禁止废话与寒暄约束】：严禁开场白、严禁无意义客套寒暄、严禁多角度发散举例。直奔核心，一击即中！`
-      );
-    }
-
-    constraints.push('纯音频口语交流，像面对面自然交谈一样紧凑。');
-
-    return basePrompt + '\n\n' + constraints.join('\n');
+    // Return pure prompt exactly as tuned by user (no extra injection)
+    return this.promptEditor.value.trim();
   }
 
   async startCall() {

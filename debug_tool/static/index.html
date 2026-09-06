@@ -53,37 +53,22 @@
         <textarea id="promptEditor" rows="9" placeholder="在此编辑提示词..."></textarea>
       </div>
 
-      <!-- Duration & Anti-Babbling Strategy Controls -->
+      <!-- Duration & Voice Settings -->
       <div class="strategy-card">
-        <h3>⚡ 时长与语速硬核约束控制</h3>
+        <h3>⏱️ 目标时长与音色配置</h3>
 
         <div class="grid-2">
           <div class="form-group">
-            <label for="inputDuration">⏱️ 期望单次时长（秒）：</label>
+            <label for="inputDuration">期望单次时长（秒）：</label>
             <input type="number" id="inputDuration" value="10" min="3" max="60">
           </div>
           <div class="form-group">
-            <label for="voiceSelect">🗣️ 官方音色：</label>
+            <label for="voiceSelect">官方音色：</label>
             <select id="voiceSelect">
               <option value="Tina" selected>Tina (官方女声 - 甜美温暖奶茶感)</option>
               <option value="Ethan">Ethan (官方男声 - 阳光坚定普通话)</option>
             </select>
           </div>
-        </div>
-
-        <div class="strategy-options">
-          <label class="checkbox-label">
-            <input type="checkbox" id="chkAutoWordLimit" checked>
-            <span><strong>字数硬刹车换算</strong>（自动将秒数折算为字数上限，如 10 秒限制 35 字以内，严禁超 2 句）</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="chkBreathPunctuation">
-            <span><strong>呼吸标点法（专治语速过快）</strong>（强行注入逗号与“……”拉大字间距停顿，制造幼儿慢速感）</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="chkNoBabbling" checked>
-            <span><strong>反废话拦截</strong>（严禁开场白、严禁寒暄铺垫、讲完核心观点立刻闭嘴）</span>
-          </label>
         </div>
       </div>
 
