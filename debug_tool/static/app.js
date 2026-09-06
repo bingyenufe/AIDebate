@@ -36,8 +36,7 @@ const ROLE_PRESETS = {
 4. 适当给予鼓励/表扬，但不可每句话都含鼓励/表扬。
 5. 纯音频生动讲解，默认不输出文本。`,
 
-  custom: `你是一位知识渊博、耐心友善的对话伙伴。
-根据用户设定的身份与语境展开实时交流。`
+  custom: `请输入提示词界定角色`
 };
 
 class RealtimeDebuggerApp {
@@ -196,8 +195,9 @@ class RealtimeDebuggerApp {
       this.voiceSelect.value = 'Tina';
       this.inputDuration.value = 8;
     } else {
+      // custom role
       this.voiceSelect.value = 'Tina';
-      this.inputDuration.value = 10;
+      this.inputDuration.value = 12;
     }
     this.updateDurationEstimates();
   }
