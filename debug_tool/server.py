@@ -29,7 +29,7 @@ if sys.platform == "win32":
 try:
     import websockets
 except ImportError:
-    print("❌ 缺少 websockets 库，正在为您自动安装...")
+    print("[INFO] 缺少 websockets 库，正在为您自动安装...")
     os.system(f'"{sys.executable}" -m pip install websockets')
     import websockets
 
@@ -55,7 +55,7 @@ def run_http_server():
     """Run HTTP static file server in a background thread."""
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("127.0.0.1", HTTP_PORT), CustomHTTPHandler) as httpd:
-        print(f"🌐 [HTTP] 本地调试网页已就绪: http://127.0.0.1:{HTTP_PORT}")
+        print(f"[HTTP] 本地调试网页服务已就绪: http://127.0.0.1:{HTTP_PORT}")
         httpd.serve_forever()
 
 
@@ -96,7 +96,7 @@ async def relay_handler(client_ws):
             }))
             return
 
-        print(f"🔗 [Proxy] 正在直连阿里云百炼 Realtime API (Key: {api_key[:7]}...)...")
+        print(f"[Proxy] 正在直连阿里云百炼 Realtime API (Key: {api_key[:7]}...)...")
 
         # Connect upstream to DashScope with Authorization header
         dashscope_ws = await websockets.connect(
@@ -105,7 +105,7 @@ async def relay_handler(client_ws):
             ping_interval=20,
             ping_timeout=20
         )
-        print("✅ [Proxy] 百炼 WebSocket 长连接握手成功！开始双向透传音频流...")
+        print("[OK] 百炼 WebSocket 长连接握手成功！开始双向透传音频流...")
 
         # Notify browser client that upstream is ready
         await client_ws.send(json.dumps({"type": "proxy.ready"}))
@@ -139,7 +139,7 @@ async def relay_handler(client_ws):
             task.cancel()
 
     except Exception as e:
-        print(f"❌ [Proxy] 连接异常: {e}")
+        print(f"[ERROR] 连接异常: {e}")
         try:
             await client_ws.send(json.dumps({
                 "type": "error",
@@ -150,12 +150,12 @@ async def relay_handler(client_ws):
     finally:
         if dashscope_ws:
             await dashscope_ws.close()
-        print("🔌 [Proxy] 会话结束，连接已释放。")
+        print("[Proxy] 会话结束，连接已释放。")
 
 
 async def main():
     print("=" * 65)
-    print("🎙️ Realtime 实时语音提示词本地调试工作台 (Prompt Debugger)")
+    print("Realtime 实时语音提示词本地调试工作台 (Prompt Debugger)")
     print("=" * 65)
 
     # 1. Start HTTP Server in background thread
@@ -167,14 +167,14 @@ async def main():
         import time
         time.sleep(1)
         url = f"http://127.0.0.1:{HTTP_PORT}"
-        print(f"🚀 [Browser] 正在自动为您打开浏览器: {url}")
+        print(f"[Browser] 正在自动为您打开浏览器: {url}")
         webbrowser.open(url)
 
     threading.Thread(target=open_browser, daemon=True).start()
 
     # 3. Start WebSocket Server
-    print(f"⚡ [WebSocket] 本地透明代理已就绪: ws://127.0.0.1:{WS_PORT}")
-    print("💡 提示: 您可以在浏览器中自由调整提示词并随时测试语音连麦。按 Ctrl+C 可停止。")
+    print(f"[WebSocket] 本地透明代理已就绪: ws://127.0.0.1:{WS_PORT}")
+    print("提示: 您可以在浏览器中自由调整提示词并随时测试语音连麦。按 Ctrl+C 可停止。")
     print("=" * 65)
 
     async with websockets.serve(relay_handler, "127.0.0.1", WS_PORT):
@@ -185,4 +185,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n👋 调试服务器已安全关闭。")
+        print("\n调试服务器已安全关闭。")
