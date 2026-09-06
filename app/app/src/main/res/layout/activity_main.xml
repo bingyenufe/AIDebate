@@ -213,6 +213,7 @@
                         android:background="@drawable/bg_edittext"
                         android:padding="10dp"
                         android:inputType="number"
+                        android:text="12"
                         android:hint="@string/custom_duration_hint"
                         android:textColor="@color/text_primary"
                         android:textColorHint="@color/text_secondary"

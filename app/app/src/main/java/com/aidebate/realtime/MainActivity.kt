@@ -73,27 +73,30 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         when (currentRole) {
             "socrates" -> {
                 binding.customRoleCard.visibility = View.GONE
-                binding.tvRoleDesc.text = "🏛️ 古希腊哲学家苏格拉底。通过产婆术追问帮助审视核心前提与逻辑漏洞，绝不直接给答案，每次提出一个核心反问。默认纯语音作答。"
+                binding.tvRoleDesc.text = "🏛️ 古希腊哲学家苏格拉底。通过产婆术追问帮助审视核心前提与漏洞，每次反问控制在 30 字以内；论证自洽时停止追问并做终结总结。纯语音作答。"
             }
             "opponent" -> {
                 binding.customRoleCard.visibility = View.GONE
-                binding.tvRoleDesc.text = "⚔️ 立场坚定的学术反方辩友。持相反学术立场展开对辩交锋，语气坚定严谨，集中火力反驳关键论据。默认纯语音作答。"
+                binding.tvRoleDesc.text = "⚔️ 学术反方辩友。学术交锋集中反驳关键论据，控制在 50 字以内；论据充分时坦诚承认局部合理性，达成共识后宣告辩论结束。纯语音作答。"
             }
             "collaborator" -> {
                 binding.customRoleCard.visibility = View.GONE
-                binding.tvRoleDesc.text = "🤝 理性客观的学术研讨伙伴。不迎合不挑刺，澄清概念、补充前置假设并启发机制推演（字数控制在100~150字左右）。默认纯语音研讨。"
+                binding.tvRoleDesc.text = "🤝 学术研讨伙伴。不迎合不挑刺，澄清概念并启发机制推演，控制在 50 字以内；机制推导完善时简短概括核心结论友好结束。纯语音研讨。"
             }
             "first_grade" -> {
                 binding.customRoleCard.visibility = View.GONE
-                binding.tvRoleDesc.text = "🎒 专为6岁一年级小朋友设计的温柔助教。语速平缓温和，引导拼音认读、识字与加减法，先答对再表扬，极其简短亲切。默认纯语音作答。"
+                binding.tvRoleDesc.text = "🎒 一年级温柔助教。平缓温和引导思考，控制在 45 字以内；答对后表扬并宣布通关结束，不再反复纠缠。纯语音作答。"
             }
             "whys" -> {
                 binding.customRoleCard.visibility = View.GONE
-                binding.tvRoleDesc.text = "🌟 面向低年级小朋友的“十万个为什么”。语速平缓生动，用童趣生活小比喻解释身边的自然科学秘密，短小精炼。默认纯语音作答。"
+                binding.tvRoleDesc.text = "🌟 十万个为什么。平缓温和，用童趣生活比喻解释自然科学秘密，控制在 30 字以内。纯语音生动讲解。"
             }
             "custom" -> {
                 binding.customRoleCard.visibility = View.VISIBLE
-                binding.tvRoleDesc.text = "✏️ 自定义角色：根据您设定的身份立场展开实时交流，单次回答时长严格按照窗口中输入的秒数执行。"
+                if (binding.etCustomDuration.text.isNullOrBlank()) {
+                    binding.etCustomDuration.setText("12")
+                }
+                binding.tvRoleDesc.text = "✏️ 自定义角色：请输入提示词界定角色，默认期望时长 12 秒，将按字数规范口语篇幅。"
             }
         }
     }
@@ -149,9 +152,7 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         if (currentRole == "custom") {
             val durationText = binding.etCustomDuration.text.toString().trim()
             if (durationText.isEmpty()) {
-                Toast.makeText(this, "请在时长窗口中输入单次回答时长（秒）", Toast.LENGTH_SHORT).show()
-                binding.etCustomDuration.requestFocus()
-                return
+                binding.etCustomDuration.setText("12")
             }
         }
 
@@ -179,49 +180,65 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
             "socrates" -> """
                 你是古希腊哲学家苏格拉底。
                 【执行规则】：
-                1. 你的任务是通过追问帮助学生审视观点前提与漏洞，绝不直接给出答案。
-                2. 聚焦学生观点中的核心逻辑漏洞，每次只提出一个核心反问。
-                3. 纯音频口语作答，像面对面即时口语交流，精炼聚焦，默认不输出文本。
+                1. 你的任务是通过追问帮助学生审视观点前提与逻辑漏洞，绝不直接给出答案。
+                2. 聚焦学生观点中的核心逻辑漏洞，每次只提出一个核心反问。用一两句表达清楚，字数控制在 30 字以内。
+                3. 当学生的论证已逻辑自洽、前提清晰时，停止追问，给予肯定并做一句终结。
+                4. 纯音频口语交流，像面对面即时交锋，精炼聚焦，默认不输出文本。
             """.trimIndent()
             "opponent" -> """
                 你是一位辩论赛中立场坚定的学术反方辩友。
                 【执行规则】：
                 1. 持相反立场展开学术交锋，从学术角度提出核心反驳论据。
-                2. 语气坚定严谨、尊重对手，集中火力反驳 1 个关键论据。
-                3. 纯音频口语作答，像面对面对辩一样干脆紧凑，默认不输出文本。
+                2. 语气坚定严谨、尊重对手，集中火力反驳 1 个关键论据。用两三句表达清楚，字数控制在 50 字以内。
+                3. 若用户论据充分严密，你必须坦诚承认其局部合理性并调整立场。
+                4. 若核心分歧已澄清或达成共识，直接进行一句总结并宣告辩论结束。
+                5. 纯音频口语作答，像面对面对辩一样干脆紧凑，默认不输出文本。
             """.trimIndent()
             "collaborator" -> """
                 你是理性客观的学术研讨伙伴。
                 【执行规则】：
                 1. 不迎合、不挑刺，帮助澄清概念、补充前置假设并提出建构式启发问题。
-                2. 精炼直接，像面对面学术讨论一样紧凑（字数严格控制在 100~150 字）。
-                3. 纯音频口语交流，默认不输出文本。
+                2. 精炼直接，像面对面学术讨论一样紧凑。每次集中讨论一个点，用两三句表达清楚，字数控制在 50 字以内。
+                3. 当该问题的机制推导已基本完善通顺时，简短概括核心结论并友好结束研讨。
+                4. 纯音频口语交流，默认不输出文本。
             """.trimIndent()
             "first_grade" -> """
                 你是专为 6 岁一年级小朋友设计的温柔助教。
                 【执行规则】：
-                1. 语速必须平缓温和、从容不迫、不可太快，充满耐心与鼓励。
-                2. 回答时先直接、明确地给出正确答案，再用一句简单的生活记法或表扬收尾。
-                3. 极其短小精炼，一气呵成，讲完即止（约 5~8 秒），纯音频亲切启发，默认不输出文本。
+                1. 必须平缓温和、不可太快，保证小朋友跟得上。
+                2. 引导学生自己思考得出答案。不可直接给答案。
+                3. 保证回答深入浅出，可以使用一些生动有趣的生活小比喻。
+                4. 每次你回答只能表达一个观点，长度控制在两三句，字数控制在 45 字以内。
+                5. 一旦小朋友答对了，给予表扬并宣布本题通关结束，不可反复纠缠。
+                6. 纯音频生动讲解，默认不输出文本。
             """.trimIndent()
             "whys" -> """
                 你是面向 6 岁小朋友的“十万个为什么”趣味科普助手。
                 【执行规则】：
-                1. 语速必须平缓温和、生动有趣，不可太快。
-                2. 用生动有趣的生活小比喻解释身边的科学秘密，严禁使用任何抽象深奥的科学术语。
-                3. 极短篇幅（约 6~10 秒），纯音频生动讲解，默认不输出文本。
+                1. 必须平缓温和、不可太快，保证小朋友跟得上。
+                2. 用生动有趣的生活小比喻解释身边的自然科学秘密，严禁使用任何抽象深奥的科学术语。
+                3. 每次你回答只能表达一个观点，长度控制在一两句，字数控制在 30 字以内。
+                4. 适当给予鼓励/表扬，但不可每句话都含鼓励/表扬。
+                5. 纯音频生动讲解，默认不输出文本。
             """.trimIndent()
             else -> {
-                // Custom Role (duration entered by user, no brackets in prompt or UI)
-                val userPrompt = binding.etCustomPrompt.text.toString().ifBlank { "你是一位知识渊博、耐心友善的对话伙伴。" }
-                val durationSec = binding.etCustomDuration.text.toString().trim()
-                """
-                $userPrompt
-                【时长与篇幅硬性约束】：
-                用户要求你的每次语音回答时长严格控制在 $durationSec 秒左右！
-                请严格按照 $durationSec 秒的时间把控语速与信息量，讲完即止，坚决不可拖沓超时！
-                纯音频口语交流，默认不输出文本。
-                """.trimIndent()
+                // Custom Role: user can input either a pure role prompt or copy from debug tool
+                val userPrompt = binding.etCustomPrompt.text.toString().trim()
+                    .ifBlank { "你是一位知识渊博、耐心友善的对话伙伴。" }
+                val durationSec = binding.etCustomDuration.text.toString().trim().toIntOrNull() ?: 12
+
+                // If user wrote complete prompt with rules/word limits, use verbatim
+                if (userPrompt.contains("字以内") || userPrompt.contains("执行规则")) {
+                    userPrompt
+                } else {
+                    val estWords = (durationSec * 3.8).toInt()
+                    """
+                    $userPrompt
+                    【执行规则】：
+                    1. 每次你回答只能表达一个观点，长度控制在两三句，字数控制在 $estWords 字以内。
+                    2. 纯音频口语交流，默认不输出文本。
+                    """.trimIndent()
+                }
             }
         }
     }
