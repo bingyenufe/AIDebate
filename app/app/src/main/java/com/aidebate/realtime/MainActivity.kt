@@ -5,8 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.media.AudioManager as AndroidAudioManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
@@ -34,6 +36,9 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
     private var currentRole = "socrates"
     private var isConnected = false
     private var isMuted = false
+    private var isCallActive = false
+    private var lastBackPressTime = 0L
+    private var proximityWakeLock: PowerManager.WakeLock? = null
 
     companion object {
         private const val REQ_CODE_PERMISSIONS = 1001
@@ -49,6 +54,7 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         realtimeClient = RealtimeAudioClient(this)
 
+        initProximitySensor()
         setupRoleSelection()
         setupButtons()
         setupBackPressInterceptor()
@@ -61,20 +67,39 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         }
     }
 
+    private fun initProximitySensor() {
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (powerManager.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
+                proximityWakeLock = powerManager.newWakeLock(
+                    PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+                    "AIDebate:ProximityWakeLock"
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun setupBackPressInterceptor() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (isConnected) {
-                    // Prevent accidental gesture/back button from destroying call
-                    moveTaskToBack(true)
+                if (isCallActive || isConnected) {
+                    // Completely prevent accidental gestures or back button from exiting or backgrounding
                     Toast.makeText(
                         this@MainActivity,
-                        "通话在后台保持进行中。如需退出请点击【挂断通话】按钮",
+                        "⚠️ 当前正在通话中，如需结束请点击红色的【挂断通话】按钮",
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                    // Double press back to exit when idle, prevents accidental swipe exits while choosing roles
+                    val now = System.currentTimeMillis()
+                    if (now - lastBackPressTime < 2000) {
+                        finish()
+                    } else {
+                        lastBackPressTime = now
+                        Toast.makeText(this@MainActivity, "再按一次返回键退出程序", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         })
@@ -202,6 +227,26 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
             }
         }
 
+        isCallActive = true
+
+        // Acquire Proximity Screen-off lock if available (turns off screen when placed to ear/face to prevent cheek touch)
+        try {
+            if (proximityWakeLock?.isHeld == false) {
+                proximityWakeLock?.acquire(30 * 60 * 1000L /* 30 min max */)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Configure system AudioManager for normal media speaker playback (same as Bilibili/media apps)
+        try {
+            val sysAudioManager = getSystemService(Context.AUDIO_SERVICE) as AndroidAudioManager
+            sysAudioManager.mode = AndroidAudioManager.MODE_NORMAL
+            sysAudioManager.isSpeakerphoneOn = true
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         binding.tvConnStatus.text = getString(R.string.status_connecting)
         binding.tvLiveStatus.text = "正在连接阿里云百炼 Qwen-Omni 实时服务..."
         binding.btnToggleCall.isEnabled = false
@@ -290,6 +335,13 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
     }
 
     private fun endCall(preserveStatusText: Boolean = false) {
+        isCallActive = false
+        try {
+            if (proximityWakeLock?.isHeld == true) {
+                proximityWakeLock?.release()
+            }
+        } catch (e: Exception) {}
+
         RealtimeForegroundService.stop(this)
         callScope?.cancel()
         callScope = null
@@ -423,6 +475,11 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            if (proximityWakeLock?.isHeld == true) {
+                proximityWakeLock?.release()
+            }
+        } catch (e: Exception) {}
         endCall()
     }
 }
