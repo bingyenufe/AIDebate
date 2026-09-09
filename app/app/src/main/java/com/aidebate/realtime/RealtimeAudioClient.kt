@@ -32,6 +32,7 @@ class RealtimeAudioClient(
 
     private var webSocket: WebSocket? = null
     private var isConnected = false
+    private var isAiSpeakingState = false
 
     fun connect(apiKey: String, systemPrompt: String, voice: String = "Tina") {
         if (apiKey.isBlank()) {
@@ -148,13 +149,18 @@ class RealtimeAudioClient(
                     if (deltaBase64.isNotEmpty()) {
                         val pcmBytes = Base64.decode(deltaBase64, Base64.DEFAULT)
                         listener.onAudioDeltaReceived(pcmBytes)
-                        listener.onAiSpeaking()
+                        if (!isAiSpeakingState) {
+                            isAiSpeakingState = true
+                            listener.onAiSpeaking()
+                        }
                     }
                 }
                 "input_audio_buffer.speech_started" -> {
+                    isAiSpeakingState = false
                     listener.onUserSpeaking()
                 }
                 "response.audio.done", "response.done" -> {
+                    isAiSpeakingState = false
                     listener.onAiFinishedSpeaking()
                 }
             }
@@ -165,6 +171,7 @@ class RealtimeAudioClient(
 
     fun disconnect() {
         isConnected = false
+        isAiSpeakingState = false
         webSocket?.close(1000, "User ended call")
         webSocket = null
     }

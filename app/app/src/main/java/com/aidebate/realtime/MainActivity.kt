@@ -38,7 +38,6 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
     private var isMuted = false
     private var isCallActive = false
     private var lastBackPressTime = 0L
-    private var proximityWakeLock: PowerManager.WakeLock? = null
 
     companion object {
         private const val REQ_CODE_PERMISSIONS = 1001
@@ -51,10 +50,14 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Safety uncaught exception handler to prevent silent desktop crashes
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            android.util.Log.e("AIDebateApp", "Uncaught exception on thread ${t.name}", e)
+        }
+
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         realtimeClient = RealtimeAudioClient(this)
 
-        initProximitySensor()
         setupRoleSelection()
         setupButtons()
         setupBackPressInterceptor()
@@ -64,20 +67,6 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         val savedKey = prefs.getString(KEY_API_KEY, "")
         if (savedKey.isNullOrBlank()) {
             showSettingsDialog(isFirstTime = true)
-        }
-    }
-
-    private fun initProximitySensor() {
-        try {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (powerManager.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
-                proximityWakeLock = powerManager.newWakeLock(
-                    PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
-                    "AIDebate:ProximityWakeLock"
-                )
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -229,15 +218,6 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
         isCallActive = true
 
-        // Acquire Proximity Screen-off lock if available (turns off screen when placed to ear/face to prevent cheek touch)
-        try {
-            if (proximityWakeLock?.isHeld == false) {
-                proximityWakeLock?.acquire(30 * 60 * 1000L /* 30 min max */)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
         // Configure system AudioManager for normal media speaker playback (same as Bilibili/media apps)
         try {
             val sysAudioManager = getSystemService(Context.AUDIO_SERVICE) as AndroidAudioManager
@@ -250,6 +230,7 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         binding.tvConnStatus.text = getString(R.string.status_connecting)
         binding.tvLiveStatus.text = "正在连接阿里云百炼 Qwen-Omni 实时服务..."
         binding.btnToggleCall.isEnabled = false
+        binding.btnSettings.isEnabled = false
 
         // Disable role switching while call is in progress
         for (i in 0 until binding.roleChipGroup.childCount) {
@@ -336,11 +317,6 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
     private fun endCall(preserveStatusText: Boolean = false) {
         isCallActive = false
-        try {
-            if (proximityWakeLock?.isHeld == true) {
-                proximityWakeLock?.release()
-            }
-        } catch (e: Exception) {}
 
         RealtimeForegroundService.stop(this)
         callScope?.cancel()
@@ -358,6 +334,7 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
         binding.btnToggleCall.text = getString(R.string.btn_start_call)
         binding.btnToggleCall.setBackgroundColor(ContextCompat.getColor(this, R.color.btn_call))
         binding.btnToggleCall.isEnabled = true
+        binding.btnSettings.isEnabled = true
         binding.btnMute.visibility = View.GONE
 
         // Re-enable role selection
@@ -475,11 +452,6 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        try {
-            if (proximityWakeLock?.isHeld == true) {
-                proximityWakeLock?.release()
-            }
-        } catch (e: Exception) {}
         endCall()
     }
 }

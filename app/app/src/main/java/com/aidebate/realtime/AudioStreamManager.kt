@@ -42,6 +42,8 @@ class AudioStreamManager {
     @Volatile
     private var isAiSpeaking = false
 
+    private val trackLock = Any()
+
     @SuppressLint("MissingPermission")
     fun startRecording(scope: CoroutineScope, onAudioChunk: (ByteArray) -> Unit) {
         if (isRecording) return
@@ -130,7 +132,11 @@ class AudioStreamManager {
                         try {
                             val chunk = audioPlaybackQueue.take()
                             isAiSpeaking = true
-                            audioTrack?.write(chunk, 0, chunk.size)
+                            synchronized(trackLock) {
+                                if (isPlaying) {
+                                    audioTrack?.write(chunk, 0, chunk.size)
+                                }
+                            }
                         } catch (e: InterruptedException) {
                             break
                         } catch (e: Exception) {
@@ -177,16 +183,18 @@ class AudioStreamManager {
      * Avoids AudioTrack flush/pause crashes when called while idle.
      */
     fun stopPlayback() {
-        val hadAudio = audioPlaybackQueue.isNotEmpty() || isAiSpeaking
         audioPlaybackQueue.clear()
-        isAiSpeaking = false
-        if (hadAudio && isPlaying) {
-            try {
-                audioTrack?.pause()
-                audioTrack?.flush()
-                audioTrack?.play()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error stopping playback", e)
+        synchronized(trackLock) {
+            val wasSpeaking = isAiSpeaking
+            isAiSpeaking = false
+            if (wasSpeaking && isPlaying) {
+                try {
+                    audioTrack?.pause()
+                    audioTrack?.flush()
+                    audioTrack?.play()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error stopping playback", e)
+                }
             }
         }
     }
@@ -197,11 +205,13 @@ class AudioStreamManager {
         playbackJob?.cancel()
         playbackJob = null
         audioPlaybackQueue.clear()
-        try {
-            audioTrack?.stop()
-            audioTrack?.release()
-        } catch (e: Exception) {}
-        audioTrack = null
+        synchronized(trackLock) {
+            try {
+                audioTrack?.stop()
+                audioTrack?.release()
+            } catch (e: Exception) {}
+            audioTrack = null
+        }
     }
 
     fun releaseAll() {
