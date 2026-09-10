@@ -551,6 +551,12 @@ async function sendChatMessage(userText, isEnd = false, imageDataUrl = '') {
     }
 
     const aiReply = data.reply || '';
+    if (!aiReply.trim()) {
+      // 空回复守卫：禁止静默插入空白气泡（服务端 502 之外的最后一道防线）
+      recStatusIcon.textContent = '❌';
+      recStatusText.textContent = 'AI 没有返回内容，请重试或切换模型';
+      return;
+    }
     chatHistory.push({ role: 'assistant', content: aiReply });
     appendMessageToFeed('ai', aiReply);
 

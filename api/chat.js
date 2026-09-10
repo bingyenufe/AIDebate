@@ -169,6 +169,11 @@ export default async function handler(req, res) {
 2. 【字数硬性限制】：请严格将你的回复字数控制在 ${targetWordCount} 字以内（用户要求 ${targetWordCount} 字，绝对不超过 500 字上限）。`;
     }
 
+    // 思考型模型：思考 token 与正文共享 max_tokens，预算过小会让正文为空
+    if (modelInfo.minMaxTokens) {
+      maxTokens = Math.max(maxTokens, modelInfo.minMaxTokens);
+    }
+
     // Append file content reference if present
     if (fileContent && fileContent.trim()) {
       systemPrompt += `\n\n以下是用户上传的参考背景材料，请在回应时适当结合或作为反驳/发问的参考依据：\n---\n${fileContent.slice(0, 8000)}\n---`;
@@ -208,6 +213,7 @@ export default async function handler(req, res) {
         messages: fullMessages,
         max_tokens: maxTokens,
         temperature: 0.7,
+        ...modelInfo.bodyOptions, // 平台差异（思考模式开关等）统一在 lib/model-registry.js 维护
       }),
     });
 
@@ -218,6 +224,13 @@ export default async function handler(req, res) {
     }
 
     const reply = data.choices && data.choices[0] ? data.choices[0].message.content : '';
+    if (typeof reply !== 'string' || !reply.trim()) {
+      // 空回复守卫：思考型模型预算不足时 content 为空（内容都在 reasoning_content 里）。
+      // 绝不能静默返回空串——前端会插入空白气泡、不报错、不朗读。
+      const fr = data.choices && data.choices[0] ? data.choices[0].finish_reason : 'no_choices';
+      console.error('Empty reply:', modelInfo.label, fr, JSON.stringify(data).slice(0, 1000));
+      return res.status(502).json({ error: `模型未返回文字内容（${modelInfo.label}，finish_reason=${fr}），请重试或切换模型` });
+    }
     return res.status(200).json({ reply });
   } catch (error) {
     console.error('Chat API Error:', error);

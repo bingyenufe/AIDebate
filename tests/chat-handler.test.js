@@ -106,24 +106,24 @@ test('vision=false 的模型收到图片返回 400（守卫）', async () => {
   }
 });
 
-test('first_grade 教辅角色：提示词含 45 字限制，maxTokens=200', async () => {
+test('first_grade 教辅角色：提示词含 45 字限制，预算取思考兜底下限 1024', async () => {
   global.fetch = okFetch();
   const res = mockRes();
   await handler({ method: 'POST', body: baseBody({ roleType: 'first_grade' }) }, res);
   const sys = globalThis.__capturedFetch.body.messages[0].content;
   assert.match(sys, /一年级/);
   assert.match(sys, /45 字以内/);
-  assert.equal(globalThis.__capturedFetch.body.max_tokens, 200);
+  assert.equal(globalThis.__capturedFetch.body.max_tokens, 1024);
 });
 
-test('whys 教辅角色：提示词含 30 字限制，maxTokens=160', async () => {
+test('whys 教辅角色：提示词含 30 字限制，预算取思考兜底下限 1024', async () => {
   global.fetch = okFetch();
   const res = mockRes();
   await handler({ method: 'POST', body: baseBody({ roleType: 'whys' }) }, res);
   const sys = globalThis.__capturedFetch.body.messages[0].content;
   assert.match(sys, /十万个为什么/);
   assert.match(sys, /30 字以内/);
-  assert.equal(globalThis.__capturedFetch.body.max_tokens, 160);
+  assert.equal(globalThis.__capturedFetch.body.max_tokens, 1024);
 });
 
 test('对辩角色不回归：socrates 走新模型且提示词保持 80 字', async () => {
@@ -133,6 +133,44 @@ test('对辩角色不回归：socrates 走新模型且提示词保持 80 字', a
   const sys = globalThis.__capturedFetch.body.messages[0].content;
   assert.match(sys, /苏格拉底/);
   assert.match(sys, /80 字以内/);
-  assert.equal(globalThis.__capturedFetch.body.max_tokens, 180);
+  assert.equal(globalThis.__capturedFetch.body.max_tokens, 1024); // deepseek 思考兜底下限
   assert.equal(globalThis.__capturedFetch.body.model, 'deepseek-flash');
+});
+
+test('思考模式控制：qwen 关思考、deepseek 关思考、glm 降为 low 档', async () => {
+  global.fetch = okFetch();
+
+  await handler({ method: 'POST', body: baseBody({ modelId: 'qwen-flash' }) }, mockRes());
+  assert.equal(globalThis.__capturedFetch.body.enable_thinking, false);
+
+  await handler({ method: 'POST', body: baseBody({ modelId: 'deepseek-flash' }) }, mockRes());
+  assert.deepEqual(globalThis.__capturedFetch.body.thinking, { type: 'disabled' });
+
+  await handler({ method: 'POST', body: baseBody({ modelId: 'glm-flash' }) }, mockRes());
+  assert.equal(globalThis.__capturedFetch.body.reasoning_effort, 'low');
+});
+
+test('思考型模型输出预算下限：qwen/deepseek 兜底 1024、glm 兜底 2048', async () => {
+  global.fetch = okFetch();
+
+  await handler({ method: 'POST', body: baseBody({ modelId: 'qwen-flash', roleType: 'first_grade' }) }, mockRes());
+  assert.equal(globalThis.__capturedFetch.body.max_tokens, 1024);
+
+  await handler({ method: 'POST', body: baseBody({ modelId: 'glm-flash', roleType: 'first_grade' }) }, mockRes());
+  assert.equal(globalThis.__capturedFetch.body.max_tokens, 2048);
+});
+
+test('上游只返回思考内容（content 为空）时返回 502，不得静默 200', async () => {
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      choices: [{ message: { content: '', reasoning_content: '思考过程…' }, finish_reason: 'length' }],
+    }),
+  });
+
+  const res = mockRes();
+  await handler({ method: 'POST', body: baseBody() }, res);
+  assert.equal(res.statusCode, 502);
+  assert.match(res.body.error, /finish_reason=length/);
 });
