@@ -74,6 +74,8 @@ const tutorCustomPanel = document.getElementById('tutorCustomPanel');
 const tutorCustomPromptInput = document.getElementById('tutorCustomPromptInput');
 const tutorWordCountInput = document.getElementById('tutorWordCountInput');
 const saveTutorCustomBtn = document.getElementById('saveTutorCustomBtn');
+const tutorTextInput = document.getElementById('tutorTextInput');
+const tutorSendBtn = document.getElementById('tutorSendBtn');
 
 // Password Unlock Modal DOM
 const passwordModalOverlay = document.getElementById('passwordModalOverlay');
@@ -113,6 +115,10 @@ const ROLE_CONFIGS = {
     instruction: '【⚠️ 必须提供附件】审查导师将结合你上传的《财税计量方法与应用》Proposal 论文文件，先后从【选题来源与贡献】、【计量模型与识别方法】、【数据与样本】、【核心 Stata 代码】、【内生性与稳健性】这几个角度深入质询（每个角度提约2个问题）。请先在左侧上传你的 Proposal 附件（PDF/TXT/MD）。'
   }
 };
+
+function getRoleConfig() {
+  return currentMode === 'tutor' ? TUTOR_ROLE_CONFIGS[currentRole] : ROLE_CONFIGS[currentRole];
+}
 
 // Initialize event listeners on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -198,7 +204,7 @@ function initRoleSelection() {
 
 
 function updateRoleUI() {
-  const config = ROLE_CONFIGS[currentRole];
+  const config = getRoleConfig();
   instructionTitle.textContent = `${config.icon} ${config.name}`;
   instructionText.textContent = config.instruction;
   chatRoleLabel.textContent = `与「${config.name}」对话中`;
@@ -232,7 +238,7 @@ function resetConversation() {
   if (currentMode === 'tutor') {
     welcomeHtml = `<strong>已切换至「${TUTOR_ROLE_CONFIGS[currentRole].name}」，请直接打字提问。</strong>`;
   } else {
-    welcomeHtml = `<strong>已切换至「${ROLE_CONFIGS[currentRole].name}」角色对话！</strong><p>请录制你的发问或立场表达，随后点击「提交发问」。</p>`;
+    welcomeHtml = `<strong>已切换至「${getRoleConfig().name}」角色对话！</strong><p>请录制你的发问或立场表达，随后点击「提交发问」。</p>`;
   }
   chatMessages.innerHTML = `
     <div class="system-welcome-msg">
@@ -468,9 +474,12 @@ function initDebateActions() {
 }
 
 async function sendChatMessage(userText, isEnd = false) {
-  if (currentRole === 'custom' && !customRolePrompt) {
-    alert('请先在左侧输入并保存自定义角色的提示词设定！');
-    return;
+  if (currentRole === 'custom') {
+    const hasPrompt = currentMode === 'tutor' ? !!tutorCustomPrompt : !!customRolePrompt;
+    if (!hasPrompt) {
+      alert('请先在左侧输入并保存自定义角色的提示词设定！');
+      return;
+    }
   }
 
   if (currentRole === 'proposal_reviewer' && !uploadedFileContent) {
@@ -485,20 +494,21 @@ async function sendChatMessage(userText, isEnd = false) {
   }
 
   recStatusIcon.textContent = '💭';
-  recStatusText.textContent = 'AI 正在思考回应中...';
+  recStatusText.textContent = currentMode === 'tutor' ? 'AI 伙伴正在思考...' : 'AI 正在思考回应中...';
 
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: chatHistory,
+        messages: chatHistory.map(({ role, content }) => ({ role, content })),
         roleType: currentRole,
-        customPrompt: customRolePrompt,
-        customWordCount: customWordCount,
+        customPrompt: currentMode === 'tutor' ? tutorCustomPrompt : customRolePrompt,
+        customWordCount: currentMode === 'tutor' ? tutorWordCount : customWordCount,
         fileContent: uploadedFileContent,
         isEnd: isEnd,
-        providedPassword: unlockedPassword
+        providedPassword: unlockedPassword,
+        modelId: currentModelId
       }),
     });
 
@@ -534,7 +544,7 @@ async function sendChatMessage(userText, isEnd = false) {
     speakText(aiReply);
 
     recStatusIcon.textContent = '🎙️';
-    recStatusText.textContent = '准备就绪，点击开始说话';
+    recStatusText.textContent = currentMode === 'tutor' ? '可以继续提问' : '准备就绪，点击开始说话';
     exportBtn.disabled = false;
   } catch (err) {
     console.error('Chat Error:', err);
@@ -547,7 +557,7 @@ function appendMessageToFeed(role, text) {
   const msgRow = document.createElement('div');
   msgRow.className = `msg-row ${role}`;
 
-  const roleName = role === 'user' ? '学生 (你)' : ROLE_CONFIGS[currentRole].name;
+  const roleName = role === 'user' ? '学生 (你)' : getRoleConfig().name;
 
   msgRow.innerHTML = `
     <div class="msg-author">${roleName}</div>
@@ -628,7 +638,7 @@ function exportDebateMarkdown() {
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   
   let mdContent = `# 财政学 AI 语音辩论记录\n\n`;
-  mdContent += `- **辩论角色**：${ROLE_CONFIGS[currentRole].name}\n`;
+  mdContent += `- **辩论角色**：${getRoleConfig().name}\n`;
   mdContent += `- **生成时间**：${dateStr}\n`;
   if (uploadedFileName) {
     mdContent += `- **参考附件**：${uploadedFileName}\n`;
@@ -639,7 +649,7 @@ function exportDebateMarkdown() {
   mdContent += `\n---\n\n`;
 
   chatHistory.forEach(msg => {
-    const speaker = msg.role === 'user' ? '**学生**' : `**${ROLE_CONFIGS[currentRole].name}**`;
+    const speaker = msg.role === 'user' ? '**学生**' : `**${getRoleConfig().name}**`;
     mdContent += `${speaker}：${msg.content}\n\n`;
   });
 
@@ -650,7 +660,7 @@ function exportDebateMarkdown() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `财政学辩论记录_${ROLE_CONFIGS[currentRole].name}_${now.toISOString().slice(0, 10)}.md`;
+  a.download = `财政学辩论记录_${getRoleConfig().name}_${now.toISOString().slice(0, 10)}.md`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -837,3 +847,32 @@ function initTutorRoleSelection() {
 }
 
 initTutorRoleSelection();
+
+function updateTutorSendState() {
+  tutorSendBtn.disabled = isDebateEnded || tutorTextInput.value.trim().length === 0;
+}
+
+async function sendTutorMessage() {
+  const text = tutorTextInput.value.trim();
+  if (!text || isDebateEnded) return;
+  if (currentRole === 'custom' && !tutorCustomPrompt) {
+    alert('请先在左侧输入并保存自定义伙伴的提示词！');
+    return;
+  }
+  tutorTextInput.value = '';
+  updateTutorSendState();
+  await sendChatMessage(text);
+}
+
+function initTutorInput() {
+  tutorSendBtn.addEventListener('click', sendTutorMessage);
+  tutorTextInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendTutorMessage();
+    }
+  });
+  tutorTextInput.addEventListener('input', updateTutorSendState);
+}
+
+initTutorInput();
