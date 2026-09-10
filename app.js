@@ -9,6 +9,8 @@ let currentMode = null; // null | 'debate' | 'tutor'
 let currentModelId = '';
 let availableModels = [];
 
+let pendingImageDataUrl = '';
+
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
@@ -76,6 +78,14 @@ const tutorWordCountInput = document.getElementById('tutorWordCountInput');
 const saveTutorCustomBtn = document.getElementById('saveTutorCustomBtn');
 const tutorTextInput = document.getElementById('tutorTextInput');
 const tutorSendBtn = document.getElementById('tutorSendBtn');
+
+// Tutor image upload DOM
+const imageInput = document.getElementById('imageInput');
+const imageDropzone = document.getElementById('imageDropzone');
+const imageUploadStatusText = document.getElementById('imageUploadStatusText');
+const tutorImageStrip = document.getElementById('tutorImageStrip');
+const tutorPendingThumb = document.getElementById('tutorPendingThumb');
+const removeImageBtn = document.getElementById('removeImageBtn');
 
 // Password Unlock Modal DOM
 const passwordModalOverlay = document.getElementById('passwordModalOverlay');
@@ -231,6 +241,7 @@ function resetConversation() {
   chatHistory = [];
   recordedSegments = [];
   isDebateEnded = false;
+  if (typeof setPendingImage === 'function') setPendingImage('');
   renderSegments();
   updateSubmitButtonState();
   
@@ -473,7 +484,7 @@ function initDebateActions() {
   exportBtn.addEventListener('click', exportDebateMarkdown);
 }
 
-async function sendChatMessage(userText, isEnd = false) {
+async function sendChatMessage(userText, isEnd = false, imageDataUrl = '') {
   if (currentRole === 'custom') {
     const hasPrompt = currentMode === 'tutor' ? !!tutorCustomPrompt : !!customRolePrompt;
     if (!hasPrompt) {
@@ -489,8 +500,10 @@ async function sendChatMessage(userText, isEnd = false) {
 
   // Add User Message to History
   if (!isEnd) {
-    chatHistory.push({ role: 'user', content: userText });
-    appendMessageToFeed('user', userText);
+    const historyEntry = { role: 'user', content: userText };
+    if (imageDataUrl) historyEntry.imageUrl = imageDataUrl; // 仅用于气泡展示，不发给后端
+    chatHistory.push(historyEntry);
+    appendMessageToFeed('user', userText, imageDataUrl || null);
   }
 
   recStatusIcon.textContent = '💭';
@@ -508,7 +521,8 @@ async function sendChatMessage(userText, isEnd = false) {
         fileContent: uploadedFileContent,
         isEnd: isEnd,
         providedPassword: unlockedPassword,
-        modelId: currentModelId
+        modelId: currentModelId,
+        imageDataUrl: imageDataUrl || undefined
       }),
     });
 
@@ -553,14 +567,19 @@ async function sendChatMessage(userText, isEnd = false) {
   }
 }
 
-function appendMessageToFeed(role, text) {
+function appendMessageToFeed(role, text, imageUrl = null) {
   const msgRow = document.createElement('div');
   msgRow.className = `msg-row ${role}`;
 
-  const roleName = role === 'user' ? '学生 (你)' : getRoleConfig().name;
+  const roleName = role === 'user' ? (currentMode === 'tutor' ? '小朋友 (你)' : '学生 (你)') : getRoleConfig().name;
+
+  const imageHtml = imageUrl
+    ? `<img class="msg-image" src="${imageUrl}" alt="发送的图片">`
+    : '';
 
   msgRow.innerHTML = `
     <div class="msg-author">${roleName}</div>
+    ${imageHtml}
     <div class="msg-bubble">${escapeHtml(text)}</div>
   `;
 
@@ -849,19 +868,31 @@ function initTutorRoleSelection() {
 initTutorRoleSelection();
 
 function updateTutorSendState() {
-  tutorSendBtn.disabled = isDebateEnded || tutorTextInput.value.trim().length === 0;
+  const hasText = tutorTextInput.value.trim().length > 0;
+  tutorSendBtn.disabled = isDebateEnded || (!hasText && !pendingImageDataUrl);
 }
 
 async function sendTutorMessage() {
   const text = tutorTextInput.value.trim();
-  if (!text || isDebateEnded) return;
+  if (isDebateEnded) return;
+  if (!text && !pendingImageDataUrl) return;
   if (currentRole === 'custom' && !tutorCustomPrompt) {
     alert('请先在左侧输入并保存自定义伙伴的提示词！');
     return;
   }
+  if (pendingImageDataUrl) {
+    const modelInfo = availableModels.find(m => m.id === currentModelId);
+    if (modelInfo && !modelInfo.vision) {
+      alert('当前模型不支持看图，请点左上角「← 重选」更换模型。');
+      return;
+    }
+  }
+  const finalText = text || (pendingImageDataUrl ? IMAGE_GUIDE_TEXT : '');
   tutorTextInput.value = '';
+  const imageDataUrl = pendingImageDataUrl;
+  setPendingImage('');
   updateTutorSendState();
-  await sendChatMessage(text);
+  await sendChatMessage(finalText, false, imageDataUrl);
 }
 
 function initTutorInput() {
@@ -876,3 +907,72 @@ function initTutorInput() {
 }
 
 initTutorInput();
+
+const IMAGE_GUIDE_TEXT = '请看一看这张图片并回答问题';
+
+function compressImageFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      reject(new Error('仅支持 JPG / PNG / WebP 图片'));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      reject(new Error('图片大小不能超过 10MB'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('图片读取失败'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('图片解析失败'));
+      img.onload = () => {
+        try {
+          const MAX_SIDE = 1280;
+          const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        } catch (err) {
+          reject(new Error('图片压缩失败: ' + err.message));
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function setPendingImage(dataUrl) {
+  pendingImageDataUrl = dataUrl;
+  tutorImageStrip.classList.toggle('hidden', !dataUrl);
+  imageDropzone.parentElement.classList.toggle('hidden', !!dataUrl);
+  if (dataUrl) {
+    tutorPendingThumb.src = dataUrl;
+    imageUploadStatusText.textContent = '点击上传题目图片';
+  }
+  updateTutorSendState();
+}
+
+function initTutorImageUpload() {
+  imageInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    imageUploadStatusText.textContent = '正在压缩图片...';
+    try {
+      const dataUrl = await compressImageFile(file);
+      setPendingImage(dataUrl);
+    } catch (err) {
+      console.error('Image processing error:', err);
+      alert(err.message);
+      imageUploadStatusText.textContent = '点击上传题目图片';
+    } finally {
+      imageInput.value = '';
+    }
+  });
+
+  removeImageBtn.addEventListener('click', () => setPendingImage(''));
+}
+
+initTutorImageUpload();

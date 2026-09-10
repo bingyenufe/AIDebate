@@ -1013,6 +1013,15 @@ textarea:focus, input[type="number"]:focus {
   max-width: 100%;
 }
 
+.msg-image {
+  max-width: 200px;
+  max-height: 160px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  margin-bottom: 6px;
+  display: block;
+}
+
 @media (max-width: 768px) {
   .mode-grid {
     grid-template-columns: 1fr;
