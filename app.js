@@ -500,7 +500,7 @@ async function sendChatMessage(userText, isEnd = false, imageDataUrl = '') {
 
   // Add User Message to History
   if (!isEnd) {
-    const historyEntry = { role: 'user', content: userText };
+    const historyEntry = { role: 'user', content: imageDataUrl ? '[已发送图片]\n' + userText : userText };
     if (imageDataUrl) historyEntry.imageUrl = imageDataUrl; // 仅用于气泡展示，不发给后端
     chatHistory.push(historyEntry);
     appendMessageToFeed('user', userText, imageDataUrl || null);
