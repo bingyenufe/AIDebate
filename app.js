@@ -742,6 +742,16 @@ function renderModelCards() {
       <div class="model-cap">${m.keyConfigured ? (m.vision ? '✓ 支持图片' : '纯文本') : '未配置该平台 Key'}</div>
     </div>
   `).join('');
+
+  // Default selection: prefer qwen-flash, otherwise first configured model
+  const defaultModel = availableModels.find(m => m.id === 'qwen-flash' && m.keyConfigured)
+    || availableModels.find(m => m.keyConfigured);
+  if (defaultModel) {
+    const card = modelGrid.querySelector(`.model-card[data-model-id="${defaultModel.id}"]`);
+    if (card) card.classList.add('active');
+    currentModelId = defaultModel.id;
+  }
+  updateEnterButtonState();
 }
 
 function updateEnterButtonState() {
@@ -760,8 +770,8 @@ function enterSelectedMode() {
 function returnToEntry() {
   sessionStorage.removeItem('aidebate_mode');
   sessionStorage.removeItem('aidebate_model');
-  currentMode = null;
   resetConversation();
+  currentMode = null;
   modeSelectOverlay.classList.remove('hidden');
   backToModeBtn.classList.add('hidden');
 }
