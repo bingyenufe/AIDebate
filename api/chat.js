@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { MODEL_REGISTRY } from '../lib/model-registry.js';
 
 async function checkAndIncrementDailyUsage() {
   const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -42,13 +43,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const apiKey = process.env.SILICONFLOW_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: '服务端未配置 SILICONFLOW_API_KEY 环境变量' });
-  }
-
   try {
-    const { messages, roleType, customPrompt, customWordCount, fileContent, isEnd, providedPassword } = req.body;
+    const { messages, roleType, customPrompt, customWordCount, fileContent, isEnd, providedPassword, modelId, imageDataUrl } = req.body;
 
     const adminPassword = process.env.ADMIN_PASSWORD || 'finance2026';
     const dailyLimit = parseInt(process.env.DAILY_LIMIT, 10) || 500;
@@ -64,6 +60,21 @@ export default async function handler(req, res) {
           message: `今日全站公共免费额度（${dailyLimit}次）已达上限。如需继续使用，请输入教师解锁密码。`
         });
       }
+    }
+
+    // ---- 模型路由（三平台 OpenAI 兼容端点，能力表见 lib/model-registry.js）----
+    const modelInfo = MODEL_REGISTRY[modelId];
+    if (!modelInfo) {
+      return res.status(400).json({ error: '未知或缺失的模型 ID，请刷新页面重新选择模型' });
+    }
+    const platformKey = process.env[modelInfo.keyEnv];
+    if (!platformKey) {
+      return res.status(400).json({ error: `${modelInfo.provider}平台未配置 API Key（环境变量 ${modelInfo.keyEnv}）` });
+    }
+
+    // 视觉守卫：能力表 vision=false 的模型不允许收图（正常配置不触发）
+    if (imageDataUrl && !modelInfo.vision) {
+      return res.status(400).json({ error: `当前模型（${modelInfo.label}）不支持图片输入` });
     }
 
     let systemPrompt = '';
@@ -124,6 +135,27 @@ export default async function handler(req, res) {
 - 专业严谨、切中要害，密切结合学生上传的 Proposal 内容，关注代码和数据处理等真实做论文的实操细节。
 - 根据对话推进情况，循序渐进地转入下一个角度的发问。每次集中问 1-2 个具体问题。
 - 每次回答字数控制在 200~300 字左右，保持精炼利落。`;
+    } else if (roleType === 'first_grade') {
+      // 教辅：移植自 Android MainActivity.kt，仅适配第 6 条（网页为文字+TTS，非纯音频）
+      maxTokens = 200;
+      systemPrompt = `你是专为 6 岁一年级小朋友设计的温柔助教。
+【执行规则】：
+1. 必须平缓温和、不可太快，保证小朋友跟得上。
+2. 引导学生自己思考得出答案。不可直接给答案。
+3. 保证回答深入浅出，可以使用一些生动有趣的生活小比喻。
+4. 每次你回答只能表达一个观点，长度控制在两三句，字数控制在 45 字以内。
+5. 一旦小朋友答对了，给予表扬并宣布本题通关结束，不可反复纠缠。
+6. 像面对面聊天一样直接输出要说的话，不输出序号、标题或表情符号。`;
+    } else if (roleType === 'whys') {
+      // 教辅：移植自 Android MainActivity.kt，仅适配第 5 条（网页为文字+TTS，非纯音频）
+      maxTokens = 160;
+      systemPrompt = `你是面向 6 岁小朋友的“十万个为什么”趣味科普助手。
+【执行规则】：
+1. 必须平缓温和、不可太快，保证小朋友跟得上。
+2. 用生动有趣的生活小比喻解释身边的自然科学秘密，严禁使用任何抽象深奥的科学术语。
+3. 每次你回答只能表达一个观点，长度控制在一两句，字数控制在 30 字以内。
+4. 适当给予鼓励/表扬，但不可每句话都含鼓励/表扬。
+5. 像面对面聊天一样直接输出要说的话，不输出序号、标题或表情符号。`;
     } else {
       // Custom role
       const targetWordCount = Math.min(Math.max(parseInt(customWordCount, 10) || 200, 10), 500);
@@ -147,14 +179,32 @@ export default async function handler(req, res) {
       ...messages
     ];
 
-    const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+    // 视觉消息构造：图片只在发送当轮对模型可见（前端历史中已存占位符）。
+    // 仅替换最后一条 user 消息为 OpenAI 视觉格式。
+    if (imageDataUrl && typeof imageDataUrl === 'string' && imageDataUrl.startsWith('data:image/')) {
+      let lastUserIdx = -1;
+      for (let i = fullMessages.length - 1; i >= 0; i--) {
+        if (fullMessages[i].role === 'user') { lastUserIdx = i; break; }
+      }
+      if (lastUserIdx !== -1) {
+        fullMessages[lastUserIdx] = {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: imageDataUrl } },
+            { type: 'text', text: fullMessages[lastUserIdx].content }
+          ]
+        };
+      }
+    }
+
+    const response = await fetch(modelInfo.url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${platformKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'deepseek-ai/DeepSeek-V3',
+        model: modelInfo.model,
         messages: fullMessages,
         max_tokens: maxTokens,
         temperature: 0.7,
@@ -163,7 +213,7 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     if (!response.ok) {
-      console.error('SiliconFlow Chat API Error:', data);
+      console.error('Chat API Error:', data);
       return res.status(response.status).json({ error: data.message || 'LLM 对话服务异常' });
     }
 
