@@ -4,6 +4,11 @@ let customWordCount = 200;
 let uploadedFileContent = '';
 let uploadedFileName = '';
 
+// Mode & model state (set on entry layer, see section 7)
+let currentMode = null; // null | 'debate' | 'tutor'
+let currentModelId = '';
+let availableModels = [];
+
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
@@ -47,6 +52,28 @@ const recordBtnText = document.getElementById('recordBtnText');
 const recStatusIcon = document.getElementById('recStatusIcon');
 const recStatusText = document.getElementById('recStatusText');
 const submitDebateBtn = document.getElementById('submitDebateBtn');
+
+// Entry layer DOM
+const modeSelectOverlay = document.getElementById('modeSelectOverlay');
+const modeCards = document.querySelectorAll('.mode-card');
+const modelGrid = document.getElementById('modelGrid');
+const enterModeBtn = document.getElementById('enterModeBtn');
+const backToModeBtn = document.getElementById('backToModeBtn');
+
+// Mode containers
+const debateSidebar = document.getElementById('debateSidebar');
+const tutorSidebar = document.getElementById('tutorSidebar');
+const inputControlsArea = document.getElementById('inputControlsArea');
+const tutorInputArea = document.getElementById('tutorInputArea');
+
+// Tutor UI
+const tutorRoleCards = document.querySelectorAll('.tutor-role');
+const tutorInstructionTitle = document.getElementById('tutorInstructionTitle');
+const tutorInstructionText = document.getElementById('tutorInstructionText');
+const tutorCustomPanel = document.getElementById('tutorCustomPanel');
+const tutorCustomPromptInput = document.getElementById('tutorCustomPromptInput');
+const tutorWordCountInput = document.getElementById('tutorWordCountInput');
+const saveTutorCustomBtn = document.getElementById('saveTutorCustomBtn');
 
 // Password Unlock Modal DOM
 const passwordModalOverlay = document.getElementById('passwordModalOverlay');
@@ -95,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDebateActions();
   initTTS();
   initPasswordModal();
+  initEntryOverlay();
 });
 
 function initPasswordModal() {
@@ -200,13 +228,16 @@ function resetConversation() {
   renderSegments();
   updateSubmitButtonState();
   
+  let welcomeHtml;
+  if (currentMode === 'tutor') {
+    welcomeHtml = `<strong>已切换至「${TUTOR_ROLE_CONFIGS[currentRole].name}」，请直接打字提问。</strong>`;
+  } else {
+    welcomeHtml = `<strong>已切换至「${ROLE_CONFIGS[currentRole].name}」角色对话！</strong><p>请录制你的发问或立场表达，随后点击「提交发问」。</p>`;
+  }
   chatMessages.innerHTML = `
     <div class="system-welcome-msg">
       <div class="welcome-icon">💡</div>
-      <div>
-        <strong>已切换至「${ROLE_CONFIGS[currentRole].name}」角色对话！</strong>
-        <p>请录制你的发问或立场表达，随后点击「提交发问」。</p>
-      </div>
+      <div>${welcomeHtml}</div>
     </div>
   `;
   exportBtn.disabled = true;
@@ -633,3 +664,166 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// ----------------------------------------------------
+// 7. Mode & Model Entry Layer (对辩 / 教辅 + 模型选择)
+// ----------------------------------------------------
+const TUTOR_ROLE_CONFIGS = {
+  first_grade: {
+    name: '一年级助教',
+    icon: '🎒',
+    instruction: '请把问题直接打字输入下方文本框，按回车或点「发送」。温柔助教会一步步引导你自己思考，不直接给答案。答对了会表扬你哦！'
+  },
+  whys: {
+    name: '十万个为什么',
+    icon: '🌟',
+    instruction: '把你好奇的问题打字输入下方文本框，「十万个为什么」会用生活中的小比喻为你讲解自然科学的秘密。'
+  },
+  custom: {
+    name: '自定义伙伴',
+    icon: '✏️',
+    instruction: '请先在左侧设定伙伴的身份风格与回复字数上限（10~200 字），保存后打字交流。'
+  }
+};
+
+let tutorCustomPrompt = '';
+let tutorWordCount = 60;
+
+function initEntryOverlay() {
+  modeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      modeCards.forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      currentMode = card.getAttribute('data-mode');
+      updateEnterButtonState();
+    });
+  });
+
+  modelGrid.addEventListener('click', (e) => {
+    const card = e.target.closest('.model-card');
+    if (!card || card.classList.contains('disabled')) return;
+    modelGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    currentModelId = card.getAttribute('data-model-id');
+    updateEnterButtonState();
+  });
+
+  enterModeBtn.addEventListener('click', enterSelectedMode);
+
+  backToModeBtn.addEventListener('click', () => {
+    if (chatHistory.length > 0 && !confirm('返回将结束当前对话，确定吗？')) return;
+    returnToEntry();
+  });
+
+  fetchModelsAndRender();
+}
+
+async function fetchModelsAndRender() {
+  try {
+    const response = await fetch('/api/models');
+    const data = await response.json();
+    availableModels = data.models || [];
+  } catch (err) {
+    console.error('加载模型列表失败:', err);
+    availableModels = [];
+  }
+  renderModelCards();
+}
+
+function renderModelCards() {
+  if (availableModels.length === 0) {
+    modelGrid.innerHTML = '<div class="model-load-error">⚠️ 模型列表加载失败，请刷新页面重试</div>';
+    return;
+  }
+  modelGrid.innerHTML = availableModels.map(m => `
+    <div class="model-card${m.keyConfigured ? '' : ' disabled'}" data-model-id="${m.id}">
+      <div class="model-provider">${m.provider}</div>
+      <div class="model-name">${m.label}</div>
+      <div class="model-cap">${m.keyConfigured ? (m.vision ? '✓ 支持图片' : '纯文本') : '未配置该平台 Key'}</div>
+    </div>
+  `).join('');
+}
+
+function updateEnterButtonState() {
+  enterModeBtn.disabled = !(currentMode && currentModelId);
+}
+
+function enterSelectedMode() {
+  if (!currentMode || !currentModelId) return;
+  sessionStorage.setItem('aidebate_mode', currentMode);
+  sessionStorage.setItem('aidebate_model', currentModelId);
+  modeSelectOverlay.classList.add('hidden');
+  backToModeBtn.classList.remove('hidden');
+  applyMode();
+}
+
+function returnToEntry() {
+  sessionStorage.removeItem('aidebate_mode');
+  sessionStorage.removeItem('aidebate_model');
+  currentMode = null;
+  resetConversation();
+  modeSelectOverlay.classList.remove('hidden');
+  backToModeBtn.classList.add('hidden');
+}
+
+function applyMode() {
+  const isTutor = currentMode === 'tutor';
+  debateSidebar.classList.toggle('hidden', isTutor);
+  tutorSidebar.classList.toggle('hidden', !isTutor);
+  inputControlsArea.classList.toggle('hidden', isTutor);
+  tutorInputArea.classList.toggle('hidden', !isTutor);
+  exportBtn.classList.toggle('hidden', isTutor);
+  endDebateBtn.classList.add('hidden');
+
+  if (isTutor) {
+    setTutorRole('first_grade');
+  } else {
+    setDebateRole('socrates');
+  }
+  resetConversation();
+}
+
+function setDebateRole(roleKey) {
+  currentRole = roleKey;
+  roleCards.forEach(c => c.classList.toggle('active', c.getAttribute('data-role') === roleKey));
+  updateRoleUI();
+}
+
+function setTutorRole(roleKey) {
+  currentRole = roleKey;
+  tutorRoleCards.forEach(c => c.classList.toggle('active', c.getAttribute('data-role') === roleKey));
+  const config = TUTOR_ROLE_CONFIGS[roleKey];
+  tutorInstructionTitle.textContent = `${config.icon} ${config.name}`;
+  tutorInstructionText.textContent = config.instruction;
+  chatRoleLabel.textContent = `与「${config.name}」对话中`;
+  tutorCustomPanel.classList.toggle('hidden', roleKey !== 'custom');
+  resetConversation();
+}
+
+function initTutorRoleSelection() {
+  tutorRoleCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const selected = card.getAttribute('data-role');
+      if (selected === currentRole) return;
+      setTutorRole(selected);
+    });
+  });
+
+  saveTutorCustomBtn.addEventListener('click', () => {
+    const val = tutorCustomPromptInput.value.trim();
+    const wc = parseInt(tutorWordCountInput.value, 10);
+    if (!val) {
+      alert('请输入自定义伙伴的提示词描述！');
+      return;
+    }
+    if (isNaN(wc) || wc < 10 || wc > 200) {
+      alert('请输入正确的字数上限（10 ~ 200 字之间）！');
+      return;
+    }
+    tutorCustomPrompt = val;
+    tutorWordCount = wc;
+    alert(`自定义伙伴设定已保存！回复字数上限为：${tutorWordCount}字。`);
+  });
+}
+
+initTutorRoleSelection();

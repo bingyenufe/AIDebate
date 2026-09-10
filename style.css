@@ -810,3 +810,220 @@ textarea:focus, input[type="number"]:focus {
   padding: 12px;
   font-size: 0.92rem;
 }
+
+/* ===================== Mode & Model Entry Layer ===================== */
+.mode-select-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.mode-select-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  padding: 32px 28px;
+  max-width: 640px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 35px rgba(245, 158, 11, 0.15);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.mode-select-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.mode-select-card h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.mode-select-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 6px 0 20px;
+}
+
+.mode-select-section {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.mode-select-section h2 {
+  font-size: 0.95rem;
+  color: var(--accent-gold);
+  margin-bottom: 10px;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mode-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 18px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.mode-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateY(-1px);
+}
+
+.mode-card.active {
+  background: var(--accent-gold-light);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+.mode-icon {
+  font-size: 2rem;
+  margin-bottom: 6px;
+}
+
+.mode-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.mode-card p {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.model-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.model-card:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.model-card.active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+}
+
+.model-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.model-provider {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.model-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 3px 0;
+  word-break: break-all;
+}
+
+.model-cap {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.model-load-error {
+  grid-column: 1 / -1;
+  font-size: 0.85rem;
+  color: var(--danger);
+  text-align: center;
+  padding: 12px;
+}
+
+/* ===================== Tutor Mode ===================== */
+.tutor-input-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.tutor-text-input {
+  flex: 1;
+  height: auto;
+  min-height: 56px;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+}
+
+.tutor-image-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.tutor-image-tip {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.image-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .model-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tutor-input-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

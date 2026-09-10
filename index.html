@@ -10,6 +10,38 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Mode & Model Selection Entry Layer -->
+  <div id="modeSelectOverlay" class="mode-select-overlay">
+    <div class="mode-select-card">
+      <div class="mode-select-icon">🏛️</div>
+      <h1>财政学 AI 课堂</h1>
+      <p class="mode-select-desc">请选择使用模式与 AI 模型</p>
+
+      <div class="mode-select-section">
+        <h2>1️⃣ 选择模式</h2>
+        <div class="mode-grid">
+          <div class="mode-card" data-mode="debate">
+            <div class="mode-icon">⚔️</div>
+            <h3>学术对辩</h3>
+            <p>财政学辩论课堂：苏格拉底 · 反方辩友 · 研讨伙伴 · Proposal 审查</p>
+          </div>
+          <div class="mode-card" data-mode="tutor">
+            <div class="mode-icon">🎒</div>
+            <h3>小学教辅</h3>
+            <p>一年级助教 · 十万个为什么 · 自定义角色<br>（文字输入 · 看图回答 · 语音播报）</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-select-section">
+        <h2>2️⃣ 选择模型</h2>
+        <div id="modelGrid" class="model-grid"></div>
+      </div>
+
+      <button id="enterModeBtn" class="btn btn-primary" disabled>进入课堂</button>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- Header -->
     <header class="app-header">
@@ -30,7 +62,7 @@
     <!-- Main Grid -->
     <main class="main-content">
       <!-- Left Sidebar: Settings & Attachments -->
-      <aside class="sidebar">
+      <aside id="debateSidebar" class="sidebar">
         <!-- Section 1: Role Selection -->
         <section class="card role-section">
           <h2>1. 选择辩论角色</h2>
@@ -121,6 +153,73 @@
         </section>
       </aside>
 
+      <!-- Tutor Sidebar (hidden until tutor mode selected) -->
+      <aside id="tutorSidebar" class="sidebar hidden">
+        <!-- Section 1: Tutor Role Selection -->
+        <section class="card role-section">
+          <h2>1. 选择学习伙伴</h2>
+          <div class="role-grid">
+            <div class="role-card tutor-role active" data-role="first_grade">
+              <div class="role-icon">🎒</div>
+              <div class="role-info">
+                <h3>一年级助教</h3>
+                <p>温柔引导 · 自己思考出答案</p>
+              </div>
+            </div>
+            <div class="role-card tutor-role" data-role="whys">
+              <div class="role-icon">🌟</div>
+              <div class="role-info">
+                <h3>十万个为什么</h3>
+                <p>生活小比喻 · 讲解自然科学</p>
+              </div>
+            </div>
+            <div class="role-card tutor-role" data-role="custom">
+              <div class="role-icon">✏️</div>
+              <div class="role-info">
+                <h3>自定义角色</h3>
+                <p>自由设定伙伴身份与回复字数</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tutor Guidance Card -->
+        <section class="card instruction-section">
+          <h2><span id="tutorInstructionTitle">🎒 一年级助教</span> 使用说明</h2>
+          <p id="tutorInstructionText" class="instruction-desc">
+            请把问题直接打字输入下方文本框，按回车或点「发送」。温柔助教会一步步引导你自己思考，不直接给答案。答对了会表扬你哦！
+          </p>
+        </section>
+
+        <!-- Tutor Custom Role Setup (Hidden by default) -->
+        <section id="tutorCustomPanel" class="card custom-role-section hidden">
+          <h2>设定自定义伙伴</h2>
+          <div class="form-group">
+            <label for="tutorCustomPromptInput">请输入 AI 伙伴的身份与风格提示词：</label>
+            <textarea id="tutorCustomPromptInput" placeholder="例如：你是一位温柔的语文老师，喜欢用童话故事讲解知识。"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="tutorWordCountInput">每次回复的字数上限 (10~200 字)：</label>
+            <input type="number" id="tutorWordCountInput" min="10" max="200" value="60">
+            <span class="field-tip">回答会简短一些，更适合小朋友听。</span>
+          </div>
+          <button id="saveTutorCustomBtn" class="btn btn-primary btn-sm">确认角色设定</button>
+        </section>
+
+        <!-- Section 2: Image Upload -->
+        <section class="card upload-section">
+          <h2>2. 上传题目图片 (可选)</h2>
+          <p class="upload-tip">支持上传一张 JPG / PNG / WebP 图片（≤10MB），AI 将看图回答。不支持 PDF/Word 等文档。</p>
+          <div class="file-upload-box">
+            <input type="file" id="imageInput" accept="image/jpeg,image/png,image/webp">
+            <label for="imageInput" class="file-dropzone" id="imageDropzone">
+              <span class="upload-icon">📷</span>
+              <span id="imageUploadStatusText">点击上传题目图片</span>
+            </label>
+          </div>
+        </section>
+      </aside>
+
       <!-- Right Main Chat Area -->
       <section class="chat-container card">
         <!-- Chat Header / Controls -->
@@ -130,6 +229,7 @@
             <span id="chatRoleLabel">与「苏格拉底」对话中</span>
           </div>
           <div class="chat-actions">
+            <button id="backToModeBtn" class="btn btn-secondary btn-sm hidden">← 重选</button>
             <button id="endDebateBtn" class="btn btn-danger btn-sm hidden">
               🏁 结束辩论并听取总结
             </button>
@@ -154,8 +254,21 @@
           <button id="stopTtsBtn" class="btn-text">停止播放</button>
         </div>
 
+        <!-- Tutor Text Input Area (hidden until tutor mode selected) -->
+        <div id="tutorInputArea" class="input-controls-area hidden">
+          <div id="tutorImageStrip" class="tutor-image-strip hidden">
+            <img id="tutorPendingThumb" class="image-thumb" alt="待发送图片预览">
+            <span class="tutor-image-tip">图片将随下一条消息一起发送</span>
+            <button id="removeImageBtn" class="btn-icon" title="移除图片">&times;</button>
+          </div>
+          <div class="tutor-input-bar">
+            <textarea id="tutorTextInput" class="tutor-text-input" rows="2" placeholder="在这里输入问题，按回车发送"></textarea>
+            <button id="tutorSendBtn" class="btn btn-primary btn-submit" disabled>发送 ⏎</button>
+          </div>
+        </div>
+
         <!-- Input Area (Multi-segment voice + Submit) -->
-        <div class="input-controls-area">
+        <div id="inputControlsArea" class="input-controls-area">
           <!-- Multi-segment preview chips -->
           <div id="audioSegmentsPreview" class="segments-preview hidden">
             <div class="segments-label">✏️ 已识别语音文本（双击或在框内直接修改校订错别字）：</div>
