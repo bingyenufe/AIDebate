@@ -774,7 +774,7 @@ function renderModelCards() {
     <div class="model-card${m.keyConfigured ? '' : ' disabled'}" data-model-id="${m.id}">
       <div class="model-provider">${m.provider}</div>
       <div class="model-name">${m.label}</div>
-      <div class="model-cap">${m.keyConfigured ? (m.vision ? '✓ 支持图片' : '纯文本') : '未配置该平台 Key'}</div>
+      ${m.keyConfigured ? '' : '<div class="model-cap">未配置该平台 Key</div>'}
     </div>
   `).join('');
 

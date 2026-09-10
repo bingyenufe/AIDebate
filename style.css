@@ -909,12 +909,6 @@ textarea:focus, input[type="number"]:focus {
   margin-bottom: 4px;
 }
 
-.mode-card p {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
 .model-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
