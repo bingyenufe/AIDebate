@@ -801,6 +801,15 @@ function returnToEntry() {
   sessionStorage.removeItem('aidebate_model');
   resetConversation();
   currentMode = null;
+  // Clear debate attachment (replicate removeFileBtn handler)
+  uploadedFileContent = '';
+  uploadedFileName = '';
+  fileInput.value = '';
+  fileLoadedBadge.classList.add('hidden');
+  dropzone.parentElement.classList.remove('hidden');
+  // Reset entry layer mode-card selection state
+  modeCards.forEach(c => c.classList.remove('active'));
+  updateEnterButtonState();
   modeSelectOverlay.classList.remove('hidden');
   backToModeBtn.classList.add('hidden');
 }
