@@ -169,6 +169,44 @@ class RealtimeAudioClient(
         }
     }
 
+    fun injectVisualContext(visualSummary: String) {
+        if (!isConnected || webSocket == null) return
+        val event = JSONObject().apply {
+            put("type", "conversation.item.create")
+            put("item", JSONObject().apply {
+                put("type", "message")
+                put("role", "user")
+                put("content", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("type", "input_text")
+                        put("text", "【用户上传了图片辅导材料，画面与题目解析如下】：\n$visualSummary\n请在后续的语音交流中结合上述画面内容为学生耐心解答。")
+                    })
+                })
+            })
+        }
+        webSocket?.send(event.toString())
+        Log.d(TAG, "Injected visual context into Realtime session")
+    }
+
+    fun clearVisualContext() {
+        if (!isConnected || webSocket == null) return
+        val event = JSONObject().apply {
+            put("type", "conversation.item.create")
+            put("item", JSONObject().apply {
+                put("type", "message")
+                put("role", "user")
+                put("content", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("type", "input_text")
+                        put("text", "【用户已移除刚才展示的图片，接下来回到日常纯语音对话】")
+                    })
+                })
+            })
+        }
+        webSocket?.send(event.toString())
+        Log.d(TAG, "Cleared visual context in Realtime session")
+    }
+
     fun disconnect() {
         isConnected = false
         isAiSpeakingState = false

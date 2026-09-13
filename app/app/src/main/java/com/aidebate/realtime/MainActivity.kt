@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioManager as AndroidAudioManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -14,15 +15,20 @@ import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import com.aidebate.realtime.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : AppCompatActivity(), RealtimeListener {
 
@@ -38,6 +44,21 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
     private var isMuted = false
     private var isCallActive = false
     private var lastBackPressTime = 0L
+
+    private var currentVisualContext: String? = null
+    private var cameraTempUri: Uri? = null
+
+    private val albumPickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            processSelectedImage(uri)
+        }
+    }
+
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && cameraTempUri != null) {
+            processSelectedImage(cameraTempUri!!)
+        }
+    }
 
     companion object {
         private const val REQ_CODE_PERMISSIONS = 1001
@@ -155,6 +176,14 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
             showSettingsDialog(isFirstTime = false)
         }
 
+        binding.btnPickImage.setOnClickListener {
+            showImageSourceDialog()
+        }
+
+        binding.btnRemoveImage.setOnClickListener {
+            removeCurrentImage()
+        }
+
         binding.btnToggleCall.setOnClickListener {
             if (!isConnected) {
                 checkPermissionAndStartCall()
@@ -177,6 +206,89 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
                 }
             }
         }
+    }
+
+    private fun showImageSourceDialog() {
+        val options = arrayOf("📷 拍摄照片", "🖼️ 从手机相册选取")
+        AlertDialog.Builder(this)
+            .setTitle("选择辅导图片来源")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> launchCamera()
+                    1 -> launchAlbum()
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun launchAlbum() {
+        try {
+            albumPickerLauncher.launch("image/*")
+        } catch (e: Exception) {
+            Toast.makeText(this, "打开相册失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun launchCamera() {
+        try {
+            val tempFile = File(cacheDir, "camera_photo_${System.currentTimeMillis()}.jpg")
+            cameraTempUri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                tempFile
+            )
+            cameraLauncher.launch(cameraTempUri)
+        } catch (e: Exception) {
+            Toast.makeText(this, "启动相机失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun processSelectedImage(uri: Uri) {
+        lifecycleScope.launch {
+            binding.panelImagePreview.visibility = View.VISIBLE
+            binding.tvImageTitle.text = "🖼️ 正在处理图片..."
+            binding.tvImageStatus.text = "⏳ 本地等比压缩中..."
+
+            val result = ImageCompressor.compressUri(this@MainActivity, uri)
+            if (result == null) {
+                Toast.makeText(this@MainActivity, "图片读取或压缩失败，请重试", Toast.LENGTH_SHORT).show()
+                binding.panelImagePreview.visibility = View.GONE
+                return@launch
+            }
+
+            binding.ivThumbnail.setImageBitmap(result.thumbnailBitmap)
+            val sizeKb = result.sizeInBytes / 1024
+            binding.tvImageTitle.text = "🖼️ 辅导图片 (${sizeKb}KB)"
+            binding.tvImageStatus.text = "🔍 正在智能识别画面与题面..."
+
+            val apiKey = prefs.getString(KEY_API_KEY, "") ?: ""
+            if (apiKey.isBlank()) {
+                binding.tvImageStatus.text = "⚠️ 未配置 API Key，无法识别画面"
+                return@launch
+            }
+
+            val visionResult = DashScopeVisionClient.analyzeImage(apiKey, result.base64Data)
+            visionResult.onSuccess { summary ->
+                currentVisualContext = summary
+                binding.tvImageStatus.text = "✅ 画面已就绪，请直接对麦克风提问"
+                if (isConnected) {
+                    realtimeClient.injectVisualContext(summary)
+                }
+            }.onFailure { error ->
+                binding.tvImageStatus.text = "⚠️ 识别提示: ${error.message ?: "网络超时"}"
+            }
+        }
+    }
+
+    private fun removeCurrentImage() {
+        currentVisualContext = null
+        binding.panelImagePreview.visibility = View.GONE
+        binding.ivThumbnail.setImageDrawable(null)
+        if (isConnected) {
+            realtimeClient.clearVisualContext()
+        }
+        Toast.makeText(this, "已移除当前图片，回到日常纯语音交流", Toast.LENGTH_SHORT).show()
     }
 
     private fun checkPermissionAndStartCall() {
@@ -248,7 +360,7 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
     }
 
     private fun buildRolePrompt(): String {
-        return when (currentRole) {
+        val basePrompt = when (currentRole) {
             "socrates" -> """
                 你是古希腊哲学家苏格拉底。
                 【执行规则】：
@@ -312,6 +424,18 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
                     """.trimIndent()
                 }
             }
+        }
+
+        return if (!currentVisualContext.isNullOrBlank()) {
+            """
+            $basePrompt
+
+            【辅导材料/题目信息】：
+            $currentVisualContext
+            请在接下来的语音解答中重点结合以上画面与题目内容为学生耐心讲解。
+            """.trimIndent()
+        } else {
+            basePrompt
         }
     }
 
@@ -400,6 +524,11 @@ class MainActivity : AppCompatActivity(), RealtimeListener {
                 if (!isMuted) {
                     realtimeClient.sendAudioChunk(chunk)
                 }
+            }
+
+            // If an image was attached before the call connected, inject it into session
+            if (!currentVisualContext.isNullOrBlank()) {
+                realtimeClient.injectVisualContext(currentVisualContext!!)
             }
         }
     }
